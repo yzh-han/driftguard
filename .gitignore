@@ -1,3 +1,13 @@
+# ds_store
+.DS_Store
+
+# datasets
+datasets/
+
+# virtual environments
+.venv/
+.vscode/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
