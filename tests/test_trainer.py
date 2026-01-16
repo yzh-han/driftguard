@@ -19,24 +19,28 @@ perm = torch.randperm(len(dataset))[:total]
 train_idx = perm[:500].tolist()
 val_idx = perm[500:600].tolist()
 
-train_loader = DataLoader(Subset(dataset, train_idx), batch_size=4, shuffle=True, num_workers=0)
-val_loader = DataLoader(Subset(dataset, val_idx), batch_size=4, shuffle=False, num_workers=0)
+train_loader = DataLoader(
+    Subset(dataset, train_idx), batch_size=8, shuffle=True, num_workers=0
+)
+val_loader = DataLoader(
+    Subset(dataset, val_idx), batch_size=8, shuffle=False, num_workers=0
+)
 
 args = ViTArgs(
-        embed_dim=128,
-        embed_image_size=224,
-        embed_patch_size=16,
-        encoder_depth=4,
-        mha_num_heads=4,
-        repr_dim=128,
-        head_num_classes=7,
-    )
+    embed_dim=128,
+    embed_image_size=224,
+    embed_patch_size=16,
+    encoder_depth=4,
+    mha_num_heads=4,
+    repr_dim=128,
+    head_num_classes=7,
+)
 model = VisonTransformer(args)
 
 model = resnet18(num_classes=7)
 trainer = Trainer(
-        model,
-        loss_fn=nn.CrossEntropyLoss(),
-        config=TrainConfig(epochs=10, device="cpu", amp=False, accumulate_steps=2),
-    )
+    model,
+    loss_fn=nn.CrossEntropyLoss(),
+    config=TrainConfig(epochs=10, device="cuda", amp=True, accumulate_steps=2),
+)
 history = trainer.fit(train_loader, val_loader)
