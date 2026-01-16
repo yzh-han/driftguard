@@ -38,12 +38,12 @@ val_loader = DataLoader(
 )
 
 args = ViTArgs(
-    embed_dim=768,
+    embed_dim=256,
     embed_image_size=224,
     embed_patch_size=16,
-    encoder_depth=12,
+    encoder_depth=6,
     mha_num_heads=12,
-    repr_dim=768,
+    repr_dim=256,
     head_num_classes=7,
 )
 
@@ -52,7 +52,7 @@ model_size(model)
 trainer = Trainer(
     model,
     loss_fn=nn.CrossEntropyLoss(),
-    config=TrainConfig(epochs=10, device="cuda", amp=True, accumulate_steps=2),
+    config=TrainConfig(epochs=50, device="cuda", amp=True, accumulate_steps=1, lr=3e-4),
 )
 history = trainer.fit(train_loader, val_loader)
 print()
