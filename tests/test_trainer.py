@@ -52,7 +52,7 @@ model_size(model)
 trainer = Trainer(
     model,
     loss_fn=nn.CrossEntropyLoss(),
-    config=TrainConfig(epochs=50, device="cuda", amp=True, accumulate_steps=1, lr=3e-4),
+    config=TrainConfig(epochs=100, device="cuda", amp=True, accumulate_steps=1, lr=3e-4),
 )
 history = trainer.fit(train_loader, val_loader)
 print()
