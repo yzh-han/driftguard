@@ -1,8 +1,14 @@
+*.ipynb
+*.md
+# agent.md
+agent.md
+
 # ds_store
 .DS_Store
 
 # datasets
-datasets/
+datasets/*
+!datasets/AGENT.md
 
 # virtual environments
 .venv/

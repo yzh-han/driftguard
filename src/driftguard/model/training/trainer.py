@@ -1,0 +1,273 @@
+"""Minimal training utilities for PyTorch models."""
+
+from dataclasses import dataclass
+from typing import Callable, Iterable, Optional
+
+import torch
+import torch.nn as nn
+from torch.amp.grad_scaler import GradScaler
+
+
+@dataclass
+class TrainConfig:
+    """Configuration for the training loop.
+
+    Attributes:
+        epochs: Number of training epochs.
+        device: Device string or torch.device to run on.
+        amp: Enable automatic mixed precision if on CUDA.
+        lr: Learning rate for AdamW.
+        weight_decay: Weight decay for AdamW.
+        grad_clip: Max norm for gradient clipping; None disables clipping.
+        accumulate_steps: Number of steps to accumulate gradients.
+    """
+    epochs: int = 10
+    device: str | torch.device | None = None
+
+    # automatic mixed precision
+    amp: bool = False
+
+    # optimizer params
+    lr: float = 1e-3
+    weight_decay: float = 0.01
+
+    grad_clip: Optional[float] = None   
+    accumulate_steps: int = 1           # 累计梯度步数
+
+    def __post_init__(self) -> None:
+        self.amp = True if self.device is torch.cuda.is_available() else False
+
+
+@dataclass
+class EpochMetrics:
+    """Aggregated metrics for a single epoch.
+
+    Attributes:
+        loss: Mean loss for the epoch.
+        accuracy: Mean accuracy for the epoch, if available.
+        num_samples: Number of samples processed.
+    """
+
+    loss: float = 0.0
+    accuracy: Optional[float] = None
+    num_samples: int = 0
+
+
+class AverageMeter:
+    """Running average tracker.
+
+    Attributes:
+        total: Sum of values.
+        count: Number of items.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the meter."""
+        self.total = 0.0
+        self.count = 0
+
+    def update(self, value: float, n: int) -> None:
+        """Update the meter.
+
+        Args:
+            value: Value to add.
+            n: Number of items represented by the value.
+        """
+
+        self.total += value * n
+        self.count += n
+
+    @property
+    def avg(self) -> float:
+        """Return the current average."""
+        return self.total / self.count if self.count else 0.0
+
+
+class Trainer:
+    """Simple trainer with optional validation and AMP.
+
+    Attributes:
+        model: Model to train.
+        optimizer: AdamW optimizer instance.
+        loss_fn: Loss function callable.
+        config: Training configuration.
+        device: Resolved torch.device for execution.
+        scaler: GradScaler for AMP if enabled and on CUDA.
+        metric_fn: Optional metric function for predictions and targets.
+    """
+
+    def __init__(
+        self,
+        model: nn.Module,
+        loss_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor],
+        *,
+        config: Optional[TrainConfig] = None,
+        metric_fn: Optional[Callable[[torch.Tensor, torch.Tensor], float]] = None,
+    ) -> None:
+        """Initialize the trainer.
+
+        Args:
+            model: Model to train.
+            loss_fn: Loss function.
+            config: Training configuration.
+            metric_fn: Optional metric for accuracy-like values.
+        """
+
+        self.model = model
+        self.loss_fn = loss_fn
+        self.config = config or TrainConfig()
+        self.metric_fn = metric_fn or self._default_accuracy
+
+        self.device = torch.device(
+            self.config.device
+            or torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        )
+        self.model.to(self.device)
+        self.optimizer = torch.optim.AdamW(
+            self.model.parameters(),
+            lr=self.config.lr,
+            weight_decay=self.config.weight_decay,
+        )
+
+        self.scaler: Optional[GradScaler] = (
+            GradScaler("cuda")
+            if self.config.amp and self.device.type == "cuda"
+            else None
+        )
+
+    def fit(
+        self,
+        train_loader: Iterable[tuple[torch.Tensor, torch.Tensor]],
+        val_loader: Optional[Iterable[tuple[torch.Tensor, torch.Tensor]]] = None,
+    ) -> list[dict[str, float]]:
+        """Run training with optional validation.
+
+        Args:
+            train_loader: Iterable of (inputs, targets) for training.
+            val_loader: Optional iterable for validation.
+
+        Returns:
+            History list with per-epoch metrics.
+        """
+
+        history: list[dict[str, float]] = [] # epoch -> metrics
+
+        for epoch in range(self.config.epochs):
+            train_metrics = self._run_epoch(train_loader, training=True)
+            record = {
+                "epoch": epoch,
+                "train_loss": train_metrics.loss,
+            }
+            if train_metrics.accuracy is not None:
+                record["train_accuracy"] = train_metrics.accuracy
+
+            if val_loader is not None:
+                val_metrics = self._run_epoch(val_loader, training=False)
+                record["val_loss"] = val_metrics.loss
+                if val_metrics.accuracy is not None:
+                    record["val_accuracy"] = val_metrics.accuracy
+            history.append(record)
+            print(f"Epoch {epoch+1}/{self.config.epochs}: {record}")
+        return history
+
+    def _run_epoch(
+        self,
+        loader: Iterable[tuple[torch.Tensor, torch.Tensor]],
+        *,
+        training: bool,
+    ) -> EpochMetrics:
+        """Run a training or evaluation epoch.
+
+        Args:
+            loader: Iterable of (inputs, targets).
+            training: Whether to run backprop and optimization.
+
+        Returns:
+            Aggregated metrics for the epoch.
+        """
+
+        self.model.train(training)
+        loss_meter = AverageMeter()
+        acc_meter = AverageMeter()
+
+        self.optimizer.zero_grad(set_to_none=True)
+        for step, batch in enumerate(loader, start=1):
+            inputs, targets = batch
+            inputs = inputs.to(self.device, non_blocking=True)
+            targets = targets.to(self.device, non_blocking=True)
+
+            with torch.autocast(
+                device_type=self.device.type,
+                enabled=self.scaler is not None,
+            ):
+                outputs = self.model(inputs)
+                loss = self.loss_fn(outputs, targets)
+
+            batch_size = targets.shape[0]
+            loss_meter.update(loss.item(), batch_size)
+
+            metric_value = self.metric_fn(outputs, targets)
+            if metric_value is not None:
+                acc_meter.update(metric_value, batch_size)
+
+            if training:
+                self._backward_step(loss, step)
+
+        if training and step % self.config.accumulate_steps != 0:
+            self._optimizer_step()
+
+        accuracy = acc_meter.avg if acc_meter.count else None
+        return EpochMetrics(loss=loss_meter.avg, accuracy=accuracy, num_samples=loss_meter.count)
+
+    def _backward_step(self, loss: torch.Tensor, step: int) -> None:
+        """Run backward pass with optional AMP and gradient accumulation.
+
+        Args:
+            loss: Loss tensor for the current batch.
+            step: Current step index (1-based).
+        """
+
+        loss = loss / self.config.accumulate_steps
+        if self.scaler is not None:
+            self.scaler.scale(loss).backward()
+        else:
+            loss.backward()
+
+        if step % self.config.accumulate_steps != 0:
+            return
+
+        self._optimizer_step()
+
+    def _optimizer_step(self) -> None:
+        """Apply optimizer step with optional AMP and gradient clipping."""
+
+        if self.config.grad_clip is not None:
+            if self.scaler is not None:
+                self.scaler.unscale_(self.optimizer)
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config.grad_clip)
+
+        if self.scaler is not None:
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+        else:
+            self.optimizer.step()
+        self.optimizer.zero_grad(set_to_none=True)
+
+    def _default_accuracy(
+        self, outputs: torch.Tensor, targets: torch.Tensor
+    ) -> Optional[float]:
+        """Compute accuracy for classification logits.
+
+        Args:
+            outputs: Model outputs (logits).
+            targets: Ground-truth labels.
+
+        Returns:
+            Accuracy in [0, 1] if shapes are compatible, otherwise None.
+        """
+
+        if outputs.dim() < 2 or targets.dim() != 1:
+            return None
+        preds = outputs.argmax(dim=1)
+        correct = (preds == targets).sum().item()
+        return correct / targets.numel()

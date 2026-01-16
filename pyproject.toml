@@ -7,7 +7,10 @@ authors = [
     { name = "yzh", email = "yzh.han@outlook.com" }
 ]
 requires-python = "~=3.14.2"
-dependencies = []
+dependencies = [
+    "torch>=2.9.1",
+    "torchvision>=0.24.1",
+]
 
 [project.scripts]
 driftguard = "driftguard.cli:main"
@@ -18,6 +21,7 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "ipykernel>=7.1.0",
     "pytest>=9.0.2",
     "ruff>=0.14.10",
 ]
