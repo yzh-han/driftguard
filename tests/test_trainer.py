@@ -42,7 +42,7 @@ args = ViTArgs(
     embed_image_size=224,
     embed_patch_size=16,
     encoder_depth=6,
-    mha_num_heads=12,
+    mha_num_heads=8,
     repr_dim=256,
     head_num_classes=7,
 )
