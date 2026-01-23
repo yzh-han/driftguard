@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import json
 from pathlib import Path
+from time import sleep
 
 import torch
 from driftguard.model.c_resnet.model import get_cresnet
@@ -153,6 +154,8 @@ def main() -> None:
             clu_args=ClusterArgs(thr=cfg.cluster_thr, min_group_size=cfg.min_group_size, w_size=cfg.w_size),
         ),
     )
+
+    sleep(5)  
 
     clients = [build_client(cid, cfg, cfg.model_fn) for cid in range(cfg.num_clients)]
     threads = [
