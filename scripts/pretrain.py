@@ -31,14 +31,25 @@ for root, test_root, image_size, num_classes, d_name in[
         train_loader = DataLoader(train_ds, batch_size=16, shuffle=True)
 
         test_tfm = get_inference_transform(image_size)
-        test_ds = datasets.ImageFolder(test_root, transform=test_tfm)
-        indices = random.sample(range(len(test_ds)), 100)
-        test_ds = Subset(test_ds, indices)
-        test_loader = DataLoader(test_ds, batch_size=16, shuffle=False)
+        full_ds = datasets.ImageFolder(test_root, transform=test_tfm)
+        sample_size = min(200, len(full_ds))
+        indices = random.sample(range(len(full_ds)), sample_size)
+        split = sample_size // 2
+        train_indices = indices[:split]
+        val_indices = indices[split:]
 
-        indices = random.sample(range(len(test_ds)), 100)
-        test_ds = Subset(test_ds, indices)
-        train_loader = DataLoader(test_ds, batch_size=16, shuffle=False)
+        train_ds = datasets.ImageFolder(test_root, transform=train_tfm)
+        val_ds = datasets.ImageFolder(test_root, transform=test_tfm)
+        train_loader = DataLoader(
+            Subset(train_ds, train_indices),
+            batch_size=16,
+            shuffle=True,
+        )
+        test_loader = DataLoader(
+            Subset(val_ds, val_indices),
+            batch_size=16,
+            shuffle=False,
+        )
 
 
 
@@ -57,4 +68,3 @@ for root, test_root, image_size, num_classes, d_name in[
 
         # x,w1,w2,s=trainer.inference(test_loader)
         # print(s.shape)
-
