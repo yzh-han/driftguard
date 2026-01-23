@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable, Dict, List
 
-from anyio import Path
+from pathlib import Path
 import torch
 
 from driftguard.federate.server.retrain_strategy import RetrainStrategy, Driftguard
@@ -17,6 +17,15 @@ class DATASET(Enum):
     DG5 = (Path("datasets/dg5/_meta.json"), 10, 28)
     PACS = (Path("datasets/pacs/_meta.json"), 7, 224)
     DDN = (Path("datasets/drift_domain_net/_meta.json"), 7, 224)
+    @property
+    def path(self) -> Path:
+        return self.value[0]
+    @property
+    def num_classes(self) -> int:
+        return self.value[1]
+    @property
+    def img_size(self) -> int:
+        return self.value[2]
 
 
 
@@ -86,6 +95,10 @@ class Exps:
         exp_list = []
         for dataset in self.datasets:
             for model in self.models:
+                if model == MODEL.CRST_S and (dataset == DATASET.PACS or dataset == DATASET.DDN):
+                    continue  # skip cresnet_s on pacs and ddn
+                if (model == MODEL.CVIT or model == MODEL.CRST_M) and dataset == DATASET.DG5:
+                    continue  # skip cvit on dg5
                 for strategy in self.strategies:
                     exp_name = f"{dataset.name}-{model.value}-{strategy.name}"
                     exp = Exp(
