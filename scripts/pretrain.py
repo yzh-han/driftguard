@@ -12,7 +12,6 @@ for root, test_root, d_name in[
     ("datasets/init_subsets/pacs_art_painting", "datasets/pacs/art_painting", "pacs"),
     ("datasets/init_subsets/domainnet_clipart", "datasets/drift_domain_net/clipart", "ddn")
 ]:
-
     # root = "datasets/init_subsets/pacs_art_painting"
     # test_root = "datasets/pacs/art_painting"
 
@@ -20,7 +19,7 @@ for root, test_root, d_name in[
     m2 = get_cvit(num_classes=7, image_size=224,patch_size=16)
 
     for model, m_name in [(m1, "cresnet"), (m2, "cvit")]:
-        train_tfm = get_train_transform(224)
+        train_tfm = get_inference_transform(224)
         train_ds = datasets.ImageFolder(root, transform=train_tfm)
         train_loader = DataLoader(train_ds, batch_size=16, shuffle=True)
 
@@ -40,6 +39,6 @@ for root, test_root, d_name in[
         history = trainer.fit(train_loader, test_loader)
         trainer.save()
 
-
-
+        # x,w1,w2,s=trainer.inference(test_loader)
+        # print(s.shape)
 

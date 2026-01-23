@@ -147,12 +147,12 @@ class Trainer:
     def save(self) -> None:
         """Save the model state dict."""
         os.makedirs("cp", exist_ok=True)
-        torch.save(self.model.state_dict(), f"cp/{self._cp_name}")
+        torch.save(self.model.state_dict(), f"cp/{self._cp_name}.pth")
     def load(self) -> None:
         """Load the model state dict."""
         os.makedirs("cp", exist_ok=True)
         self.model.load_state_dict(
-            torch.load(f"cp/{self._cp_name}", map_location=self.device)
+            torch.load(f"cp/{self._cp_name}.pth", map_location=self.device)
         )
 
     def inference(
