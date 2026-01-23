@@ -272,7 +272,7 @@ class Trainer:
                     device_type=self.device.type,
                     enabled=self.scaler is not None,
                 ):
-                    out, l1_w, l2_w = self.model(inputs), torch.tensor([]), torch.tensor([])
+                    out, l1_w, l2_w = self.model(inputs)
                     loss = self.loss_fn(out, targets)
 
                 # 记录 loss
