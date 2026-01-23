@@ -1,6 +1,6 @@
 import pytest
 
-from driftguard.data.drift_events_generator import DriftEvent, generate_drift_events
+from driftguard.data.drift_simulation import DriftEvent, generate_drift_events
 
 
 def test_generate_drift_events_count_and_bounds() -> None:
@@ -20,7 +20,7 @@ def test_generate_drift_events_count_and_bounds() -> None:
     for event in events:
         assert isinstance(event, DriftEvent)
         assert 0 <= event.time_step < 100
-        assert 0 <= event.n_aff_client <= 10
+        assert 0 <= len(event.clients) <= 10
         assert event.duration >= 0
         assert event.drift_dist >= 1
 
@@ -48,3 +48,18 @@ def test_generate_drift_events_validates_ranges() -> None:
         generate_drift_events(gradual_duration_ratio=-0.1)
     with pytest.raises(ValueError, match="stage is too small"):
         generate_drift_events(n_time_steps=4, n_stage=2, n_sudden=2, n_gradual=2)
+
+if __name__ == "__main__":
+    events = generate_drift_events(
+        n_time_steps=20,
+        n_clients=30,
+        n_sudden=2,
+        n_gradual=2,
+        n_stage=2,
+        aff_client_ratio_range=(0.1, 0.3),
+        start=0.1,
+        end=0.8,
+        gradual_duration_ratio=0.2,
+    )
+    for event in events:
+        print(event)

@@ -1,12 +1,16 @@
 """Minimal training utilities for PyTorch models."""
 
 from dataclasses import dataclass
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable, Optional, Tuple
 
 import torch
 import torch.nn as nn
 from torch.amp.grad_scaler import GradScaler
+import torch.nn.functional as F
 
+from driftguard.config import get_logger
+
+logger = get_logger("trainer")
 
 @dataclass
 class TrainConfig:
@@ -49,7 +53,7 @@ class EpochMetrics:
     """
 
     loss: float = 0.0
-    accuracy: Optional[float] = None
+    accuracy: float = 0.0
     num_samples: int = 0
 
 
@@ -135,6 +139,12 @@ class Trainer:
             else None
         )
 
+    def inference(
+        self, 
+        test_loader: Iterable[tuple[torch.Tensor, torch.Tensor]]
+    ) -> Tuple[EpochMetrics, torch.Tensor, torch.Tensor, torch.Tensor]:
+        return self._run_epoch(test_loader, training=False)
+
     def fit(
         self,
         train_loader: Iterable[tuple[torch.Tensor, torch.Tensor]],
@@ -153,7 +163,7 @@ class Trainer:
         history: list[dict[str, float]] = [] # epoch -> metrics
 
         for epoch in range(self.config.epochs):
-            train_metrics = self._run_epoch(train_loader, training=True)
+            train_metrics, _, _, _ = self._run_epoch(train_loader, training=True)
             record = {
                 "epoch": epoch,
                 "train_loss": train_metrics.loss,
@@ -162,12 +172,12 @@ class Trainer:
                 record["train_accuracy"] = train_metrics.accuracy
 
             if val_loader is not None:
-                val_metrics = self._run_epoch(val_loader, training=False)
+                val_metrics, _, _, _ = self._run_epoch(val_loader, training=False)
                 record["val_loss"] = val_metrics.loss
                 if val_metrics.accuracy is not None:
                     record["val_accuracy"] = val_metrics.accuracy
             history.append(record)
-            print(f"Epoch {epoch+1}/{self.config.epochs}: {record}")
+            logger.debug(f"Epoch {epoch+1}/{self.config.epochs}: {record}")
         return history
 
     def _run_epoch(
@@ -175,7 +185,7 @@ class Trainer:
         loader: Iterable[tuple[torch.Tensor, torch.Tensor]],
         *,
         training: bool,
-    ) -> EpochMetrics:
+    ) -> Tuple[EpochMetrics, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Run a training or evaluation epoch.
 
         Args:
@@ -183,41 +193,64 @@ class Trainer:
             training: Whether to run backprop and optimization.
 
         Returns:
-            Aggregated metrics for the epoch.
+            Aggregated metrics for the epoch along with l1_w and l2_w tensors.
         """
 
         self.model.train(training)
         loss_meter = AverageMeter()
         acc_meter = AverageMeter()
+        l1_w_list = []
+        l2_w_list = []
+        out_list = []
 
         self.optimizer.zero_grad(set_to_none=True)
-        for step, batch in enumerate(loader, start=1):
-            inputs, targets = batch
-            inputs = inputs.to(self.device, non_blocking=True)
-            targets = targets.to(self.device, non_blocking=True)
 
-            with torch.autocast(
-                device_type=self.device.type,
-                enabled=self.scaler is not None,
-            ):
-                outputs = self.model(inputs)
-                loss = self.loss_fn(outputs, targets)
+        with torch.set_grad_enabled(training):
+            for step, batch in enumerate(loader, start=1):
+                inputs, targets = batch
+                inputs = inputs.to(self.device, non_blocking=True)
+                targets = targets.to(self.device, non_blocking=True)
 
-            batch_size = targets.shape[0]
-            loss_meter.update(loss.item(), batch_size)
+                with torch.autocast(
+                    device_type=self.device.type,
+                    enabled=self.scaler is not None,
+                ):
+                    out, l1_w, l2_w = self.model(inputs)
+                    loss = self.loss_fn(out, targets)
 
-            metric_value = self.metric_fn(outputs, targets)
-            if metric_value is not None:
-                acc_meter.update(metric_value, batch_size)
+                # 记录 loss
+                batch_size = targets.shape[0]
+                loss_meter.update(loss.item(), batch_size)
 
-            if training:
-                self._backward_step(loss, step)
+                # 记录 accuracy
+                metric_value = self.metric_fn(out, targets)
+                if metric_value is not None:
+                    acc_meter.update(metric_value, batch_size)
 
-        if training and step % self.config.accumulate_steps != 0:
-            self._optimizer_step()
+                # 记录 l1_w, l2_w, softs
+                if not training:
+                    l1_w_list.append(l1_w)
+                    l2_w_list.append(l2_w)
+                    out_list.append(out)
 
-        accuracy = acc_meter.avg if acc_meter.count else None
-        return EpochMetrics(loss=loss_meter.avg, accuracy=accuracy, num_samples=loss_meter.count)
+                if training:
+                    self._backward_step(loss, step)
+
+            if training and step % self.config.accumulate_steps != 0:
+                self._optimizer_step()
+
+        accuracy = acc_meter.avg if acc_meter.count else 0.0
+        l1_w = torch.concat(l1_w_list) if l1_w_list else torch.tensor([])
+        l2_w = torch.concat(l2_w_list) if l2_w_list else torch.tensor([])
+        X = torch.concat(out_list) if out_list else torch.tensor([])
+        return (
+            EpochMetrics(
+                loss=loss_meter.avg, accuracy=accuracy, num_samples=loss_meter.count
+            ),
+            l1_w,
+            l2_w,
+            F.softmax(X, dim=-1)
+        )
 
     def _backward_step(self, loss: torch.Tensor, step: int) -> None:
         """Run backward pass with optional AMP and gradient accumulation.

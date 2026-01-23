@@ -8,7 +8,7 @@ agent.md
 
 # datasets
 datasets/*
-!datasets/AGENT.md
+datasets/AGENT.md
 
 # virtual environments
 .venv/

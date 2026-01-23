@@ -1,0 +1,147 @@
+from dataclasses import dataclass
+from enum import Enum
+from typing import List, TypeAlias
+import numpy as np
+import torch
+import torch.nn as nn
+from driftguard.config import get_logger
+from driftguard.model.utils import freeze_layer, unfreeze_layer
+
+logger = get_logger("params")
+
+Params: TypeAlias = List[np.ndarray]
+
+class ParamType(Enum):
+    """Parameter names used for retraining aggregation."""
+    SHARED = "shared"
+    LOCAL = "local"
+    FULL = "full"
+    NONE = None
+    
+
+@dataclass
+class FedParam:
+    shared: Params
+    local: Params 
+    full: Params
+    
+    def set_all(self, model: nn.Module) -> None:
+        """Set all parameters to the model."""
+        set_params(model, self.shared, names=["local", "gate"], exclude=True)
+        set_params(model, self.local, names=["local"])
+
+    @staticmethod
+    def freeze_exclude(model: nn.Module, param_type: ParamType) -> None:
+        if param_type == ParamType.SHARED:
+            freeze_layer(model, include_names=["local", "gate"], exclude=True)
+        elif param_type == ParamType.LOCAL:
+            freeze_layer(model, include_names=["local"])
+        elif param_type == ParamType.FULL:
+            pass
+        else:
+            raise ValueError(f"Unknown param_type: {param_type}")
+    @staticmethod
+    def unfreeze(model: nn.Module) -> None:
+        unfreeze_layer(model)
+
+    @staticmethod
+    def set(model: nn.Module, params: Params, param_type: ParamType) -> None:
+        if param_type == ParamType.SHARED:
+            set_params(model, params, names=["local", "gate"], exclude=True)
+        elif param_type == ParamType.LOCAL:
+            set_params(model, params, names=["local"])
+        elif param_type == ParamType.FULL:
+            set_params(model, params)
+        else:
+            raise ValueError(f"Unknown param_type: {param_type}")
+    @staticmethod
+    def get(model: nn.Module, param_type: ParamType) -> Params:
+        if param_type == ParamType.SHARED:
+            return get_params(model, names=["local", "gate"], exclude=True)
+        elif param_type == ParamType.LOCAL:
+            return get_params(model, names=["local"])
+        elif param_type == ParamType.FULL:
+            return get_params(model)
+        else:
+            raise ValueError(f"Unknown param_type: {param_type}")
+
+def aggregate_params(params_list: List[Params], sample_sizes: List[int] = []) -> Params:
+    """Aggregate model parameters (FedAvg)."""
+    if not params_list:
+        raise ValueError("No parameters to aggregate")
+
+    if len(params_list) == 1:
+        return params_list[0]
+
+    # Calculate total samples
+    total_samples = sum(sample_sizes)
+    if total_samples == 0:
+        # If no sample info, use average aggregation
+        total_samples = len(params_list)
+        sample_sizes = [1] * len(params_list)
+
+    # Initialize aggregated parameters
+    aggregated_params = []
+
+    # Aggregate each layer
+    for layer_idx in range(len(params_list[0])):
+        # Weighted average
+        layer_sum = None
+
+        for client_params, sample_size in zip(params_list, sample_sizes):
+            weight = sample_size / total_samples
+            layer_params = client_params[layer_idx]
+
+            if layer_sum is None:
+                layer_sum = layer_params * weight
+            else:
+                layer_sum += layer_params * weight
+
+        aggregated_params.append(layer_sum)
+
+    return aggregated_params
+
+
+def get_params(model: nn.Module, names: List[str] = [], exclude: bool = False) -> Params:
+    """Get model weights as a list of numpy arrays.
+
+    Args:
+        model: The model to extract weights from.
+    """
+    params = []
+    for layer_name, param in model.named_parameters():
+        if exclude:
+            if names and all(name not in layer_name for name in names):
+                params.append(param.data.cpu().numpy())
+        else:
+            if any(name in layer_name for name in names) or not names:
+                params.append(param.data.cpu().numpy()) 
+    return params
+
+def set_params(
+    model: nn.Module, params: Params, names: List[str] = [], exclude: bool = False
+) -> None:
+    """Set model weights from a list of numpy arrays.
+    """
+
+    # Get parameter names and their corresponding parameters
+    # logger.debug(f"layer_name: {layer_name}, params len: {len(params)}")
+    if exclude:
+        param_names = [
+            layer_name
+            for layer_name, _ in model.named_parameters()
+            if names and all(name not in layer_name for name in names)
+        ]
+    else:
+        param_names = [
+            layer_name
+            for layer_name, _ in model.named_parameters()
+            if any(name in layer_name for name in names) or not names
+        ]
+    assert len(param_names) == len(params), "set_params: Mismatched number"
+
+    # Create state_dict from numpy weights
+    state_dict = {
+        n: torch.from_numpy(p) for n, p in zip(param_names, params)
+    }
+    model.load_state_dict(state_dict, strict=False)

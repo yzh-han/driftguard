@@ -16,50 +16,19 @@ from driftguard.model.vit import ViTArgs, VisonTransformer
 
 @dataclass(frozen=True)
 class Sample:
-    """Represents a single image sample on disk.
-
-    Attributes:
-        path: Path to the image file.
-        label: Integer class label.
-    """
-
     path: Path
     label: int
 
 
 class FolderDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
-    """Dataset that loads images from class folders.
-
-    Attributes:
-        samples: Collected image samples.
-        class_names: Sorted class names for the dataset.
-    """
-
     def __init__(self, root: Path, max_samples: int) -> None:
-        """Initialize the dataset from a folder of class subdirectories.
-
-        Args:
-            root: Root folder containing class subdirectories.
-            max_samples: Maximum number of samples to load.
-        """
 
         self.samples, self.class_names = self._collect_samples(root, max_samples)
 
     def __len__(self) -> int:
-        """Return the number of samples."""
-
         return len(self.samples)
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
-        """Return an image tensor and label.
-
-        Args:
-            index: Sample index.
-
-        Returns:
-            Tuple of (image tensor, label tensor).
-        """
-
         image_module = pytest.importorskip("PIL.Image")
         sample = self.samples[index]
         image = image_module.open(sample.path).convert("RGB")
@@ -71,15 +40,6 @@ class FolderDataset(Dataset[tuple[torch.Tensor, torch.Tensor]]):
 
     @staticmethod
     def _collect_samples(root: Path, max_samples: int) -> tuple[list[Sample], list[str]]:
-        """Collect image paths and labels from the root folder.
-
-        Args:
-            root: Root folder containing class subdirectories.
-            max_samples: Maximum number of samples to collect.
-
-        Returns:
-            List of samples.
-        """
 
         samples: list[Sample] = []
         class_dirs = [item for item in sorted(root.iterdir()) if item.is_dir()]

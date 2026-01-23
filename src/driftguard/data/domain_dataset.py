@@ -5,19 +5,28 @@ from collections import deque
 from collections.abc import Callable
 from pathlib import Path
 import random
-
+from PIL import Image
+import io
+import torch
+from torchvision import transforms
 
 class DomainDataset:
     """Serve samples by domain using precomputed metadata.
 
     Attributes:
-        meta_path: Path to the dataset metadata file.
-        dataset_root: Root directory of the dataset (parent of meta_path).
-        buffer_size: Number of samples buffered per domain.
-        transform: Optional callable applied to raw bytes before returning.
         domains: Ordered list of available domains.
-        domain_to_files: Mapping of domain -> deque of (relative path, label idx).
     """
+    # static method to convert PIL Image to tensor
+    @staticmethod
+    def toTensor(b_image: bytes) -> torch.Tensor:
+        pil_image = Image.open(io.BytesIO(b_image))
+        tensor_transform = transforms.ToTensor()
+        return tensor_transform(pil_image)
+    
+    # static method to convert bytes to PIL Image
+    @staticmethod
+    def toImage(b_image: bytes) -> Image.Image:
+        return Image.open(io.BytesIO(b_image))
 
     def __init__(
         self,
@@ -29,50 +38,69 @@ class DomainDataset:
 
         Args:
             meta_path: Path to `datasets/<name>/_meta.json`.
-            buffer_size: Samples buffered per domain for lightweight sampling.
             transform: Optional transform applied to raw bytes.
         """
         self.meta_path = Path(meta_path)
         self.dataset_root = self.meta_path.parent
         self.transform = transform
 
-        rng = random.Random(seed)
+        self.rng = random.Random(seed)
         meta = self._load_meta(self.meta_path)
+
         self.domains: list[str] = list(meta["domains"])
-        domain_to_files: dict[str, list[tuple[Path, int]]] \
-            = {domain: [(self.dataset_root / rel_path, label_idx) 
-                 for rel_path, label_idx in entries]
-               for domain, entries in meta["domain_to_files"].items()}
+        """Ordered list of available domains."""
+
+        domain_to_files: dict[str, list[tuple[Path, int]]] = {
+            domain: [
+                (self.dataset_root / rel_path, label_idx)
+                for rel_path, label_idx in entries
+            ]
+            for domain, entries in meta["domain_to_files"].items()
+        } # Mapping of domain -> list of (path, label idx).
+
         for entries in domain_to_files.values():
-            rng.shuffle(entries)
-        """Mapping of domain -> list of (path, label idx)."""
+            # Shuffle entries for randomness
+            self.rng.shuffle(entries)
+
         self.buffer: dict[str, deque[tuple[Path, int]]] \
             = {domain: deque(entries) for domain, entries in domain_to_files.items()}
         """Mapping of domain -> deque of (path, label idx)."""
 
+    # sample number of samples based on domain probabilities
+    def get(self, n: int, distribution: list[float]) -> list[tuple[bytes, int]]:
+        assert len(distribution) == len(self.domains), (
+            "Distribution length must match number of domains"
+        )
 
-    def get_one(self, domain: str) -> tuple[bytes, int]:
-        """Return a single sample for the requested domain.
+
+        samples = self.rng.choices(
+            range(len(distribution)), weights=distribution, k=n
+        )
+
+        return [self.get_one(d) for d in samples]
+
+    def get_one(self, domain_idx: int) -> tuple[bytes, int]:
+        """Return a single sample for the requested domain index.
 
         Args:
-            domain: Domain name to sample from.
+            domain_idx: Index of the domain to sample from.
 
         Returns:
             Tuple of (raw bytes, label_idx) or None if unavailable.
         """
-        if domain not in self.buffer:
-            raise ValueError(f"Unknown domain: {domain}")
-        
+        if domain_idx >= len(self.domains):
+            raise ValueError(f"Unknown domain: {domain_idx}")
+        domain = self.domains[domain_idx]
         # buffer of (path, label_idx)
         entries: deque[tuple[Path, int]] = self.buffer[domain]
         if not entries:
             raise ValueError(f"No samples available for domain: {domain}")
         
         path, label_idx = entries.popleft()
-        data = path.read_bytes()
+        b_image = path.read_bytes()
         if self.transform:
-            data = self.transform(data)
-        return data, label_idx
+            b_image = self.transform(b_image)
+        return b_image, label_idx
 
     @staticmethod
     def _load_meta(meta_path: Path) -> dict:

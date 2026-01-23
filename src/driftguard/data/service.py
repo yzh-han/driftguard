@@ -1,72 +1,96 @@
 """XML-RPC data service for domain-sampled data."""
 
+from collections import deque
+from dataclasses import dataclass
 import random
 from collections.abc import Iterable
 from pathlib import Path
+import threading
+from typing import List, Tuple
 from xmlrpc.client import Binary
 from xmlrpc.server import SimpleXMLRPCServer
 
-from .domain_dataset import DomainDataset
-from .drift_controller import DriftController
+from driftguard.rpc.rpc import Node, server_func
+from driftguard.data.drift_simulation import (
+    ClientState,
+    DriftEvent,
+    DriftEvent,
+    DriftEventArgs,
+    generate_drift_events,
+)
+from driftguard.data.domain_dataset import DomainDataset
+from driftguard import config
+
+logger = config.get_logger("data.service")
+
+
+@dataclass
+class DataServiceArgs:
+    meta_path: Path | str
+    num_clients: int
+    batch_size: int
+    drift_event_args: DriftEventArgs
+    seed: int | None
 
 
 class DataService:
     """Minimal XML-RPC service for sampling data by domain.
-
     Attributes:
-        dataset: DomainDataset used to fetch samples.
-        drift: Optional drift controller for domain selection.
+        dataset: DomainDataset instance.
+        client_states: ClientState instance.
+        batch_size: Number of samples per client request.
     """
+
     def __init__(
         self,
-        meta_path: Path | str,
-        buffer_size: int = 32,
-        drift: DriftController | None = None,
+        args: DataServiceArgs,
     ) -> None:
-        """Initialize the service with dataset metadata.
-
+        """Initialize the data service with dataset and drift events.
         Args:
-            meta_path: Path to `datasets/<name>/_meta.json`.
-            buffer_size: Samples buffered per domain.
-            drift: Optional drift controller.
+            args: DataServiceArgs instance.
         """
-        self.dataset = DomainDataset(meta_path, buffer_size=buffer_size)
-        self.drift = drift
+        self.dataset = DomainDataset(args.meta_path, seed=args.seed)
+        self.client_states: ClientState = ClientState(
+            num_domains=len(self.dataset.domains),
+            num_clients=args.num_clients,
+            seed=args.seed,
+        )
+        self.batch_size: int = args.batch_size
+
+        self._time_step: int = 1
+        self._events: deque[DriftEvent] = generate_drift_events(
+            args=args.drift_event_args
+        )
         self._server: SimpleXMLRPCServer | None = None
+        self._rng: random.Random = random.Random(args.seed)
 
-    def attach_server(self, server: SimpleXMLRPCServer) -> None:
-        """Attach the XML-RPC server instance for shutdown control.
-
+        logger.info(f"Data service starting with {args.num_clients} clients...")
+        logger.debug(f"Dataset domains: {self.dataset.domains}")
+    @server_func
+    def get_data(self, args: Tuple[int, int]) -> List[Tuple[bytes, int]]:
+        """Get a batch of data samples for a client at a given time step.
         Args:
-            server: Active XML-RPC server instance.
-        """
-        self._server = server
-
-    def get_domains(self) -> tuple[str, ...]:
-        """Return available domains for RPC clients.
-
+            args: Tuple containing (client_id, time_step).
         Returns:
-            Tuple of domain names.
-        """
-        return tuple(self.dataset.domains)
-
-    def get_data(self, args: Iterable[int]) -> tuple[Binary, int] | None:
-        """Return a single sample for the given client and time step.
-
-        Args:
-            args: Iterable containing (cid, time_step).
-
-        Returns:
-            Tuple of (Binary bytes, label_idx) or None if unavailable.
+            List of samples: List[Tuple[bytes, int]]
         """
         # args: (cid, time_step) in this minimal RPC contract.
-        cid, time_step = list(args)[:2]
-        domain = self._select_domain(cid, time_step)
-        sample = self.dataset.get_one(domain)
-        if sample is None:
-            return None
-        data, label_idx = sample
-        return Binary(data), label_idx
+        cid, time_step = args
+
+        if self._time_step != time_step:
+            # Advance all client states to the new time step.
+            self._time_step = time_step
+            while self._events and self._events[0].time_step <= time_step:
+                event = self._events.popleft()
+                self.client_states.update(event)
+
+        samples = self.dataset.get(
+            self.batch_size, self.client_states.get_distribution(cid)
+        )
+        logger.info(
+            f"[get_data] cid: {cid}\ttime_step: {time_step}\tdistribution: {self.client_states.get_distribution(cid)}"
+        )
+        return samples
 
     def stop(self) -> bool:
         """Shutdown the XML-RPC server if attached.
@@ -77,49 +101,28 @@ class DataService:
         # Allow remote shutdown via RPC.
         if self._server is None:
             return False
-        self._server.shutdown()
+
+        logger.info("Shutting down the data service...")
+        threading.Thread(target=self._server.shutdown, daemon=True).start()
         return True
 
-    def _select_domain(self, cid: int, time_step: int) -> str:
-        """Select a domain given the client and time step.
+    def _attach_server(self, server: SimpleXMLRPCServer) -> None:
+        """Attach the XML-RPC server instance for shutdown control.
 
         Args:
-            cid: Client identifier.
-            time_step: Current time step.
-
-        Returns:
-            Selected domain name.
+            server: Active XML-RPC server instance.
         """
-        domains = self.dataset.domains
-        if not domains:
-            raise ValueError("no domains available")
-        if self.drift is None:
-            # Default to uniform domain sampling when no drift controller.
-            return random.choice(domains)
-        self.drift.update_time_step(time_step)
-        domain_idx = self.drift.sample(cid)
-        return domains[domain_idx % len(domains)]
+        self._server = server
 
 
-def serve_forever(
-    meta_path: Path | str,
-    host: str = "0.0.0.0",
-    port: int = 8000,
-    buffer_size: int = 32,
-    drift: DriftController | None = None,
-) -> None:
-    """Start an XML-RPC server and block forever.
-
-    Args:
-        meta_path: Path to `datasets/<name>/_meta.json`.
-        host: Hostname or IP address to bind.
-        port: TCP port to bind.
-        buffer_size: Samples buffered per domain.
-        drift: Optional drift controller.
-    """
-    # Minimal XML-RPC server bootstrap.
-    server = SimpleXMLRPCServer((host, port), allow_none=True, logRequests=False)
-    service = DataService(meta_path, buffer_size=buffer_size, drift=drift)
-    service.attach_server(server)
+def start_data_service(
+    node: Node, args: DataServiceArgs
+) -> Tuple[SimpleXMLRPCServer, DataService]:
+    """Start the data service server in a background thread."""
+    server = SimpleXMLRPCServer((node.host, node.port), allow_none=True, logRequests=False)
+    service = DataService(args)
+    service._attach_server(server)
     server.register_instance(service)
-    server.serve_forever()
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, service

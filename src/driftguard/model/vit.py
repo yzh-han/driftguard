@@ -4,7 +4,7 @@ from typing import Callable, NamedTuple, Optional
 import torch
 import torch.nn as nn
 
-from driftguard.model.activation import DropPath
+from driftguard.model.c_vit.activation import DropPath
 
 # Tensor 的方法
 # transpose 只2维交换, permute是多维交换
