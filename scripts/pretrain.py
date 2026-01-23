@@ -36,6 +36,10 @@ for root, test_root, image_size, num_classes, d_name in[
         test_ds = Subset(test_ds, indices)
         test_loader = DataLoader(test_ds, batch_size=16, shuffle=False)
 
+        indices = random.sample(range(len(test_ds)), 100)
+        test_ds = Subset(test_ds, indices)
+        train_loader = DataLoader(test_ds, batch_size=16, shuffle=False)
+
 
 
         trainer = Trainer(
