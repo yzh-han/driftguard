@@ -68,8 +68,17 @@ class FedClient:
             params = []
             while True:
                 params, rt_cfg = self.s_proxy.req_trig((self.cid, obs, params))
-                
+                FedParam.unfreeze(self.model)
+
                 if not rt_cfg.trigger or self.cid not in rt_cfg.selection:
+                    # 训练结束set参数, 更新Gate
+                    if rt_cfg.param_type:
+                        FedParam.set(self.model, params, rt_cfg.param_type)
+                        FedParam.freeze_exclude(self.model, ParamType._GATE)
+                        self.exp.update_cost(
+                            time_step, get_trainable_params(self.model)
+                        )
+                        self.train(samples)
                     continue
 
                 if params: 
@@ -81,7 +90,7 @@ class FedClient:
                 self.train(samples)
                 params = FedParam.get(self.model, rt_cfg.param_type)
                 self.exp.update_cost(time_step, get_trainable_params(self.model))
-                FedParam.unfreeze(self.model)
+            
         self.exp.record(self.cid)
 
     def inference(self, samples: List[Tuple[bytes, int]]) -> Observation:

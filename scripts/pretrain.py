@@ -34,7 +34,12 @@ for root, test_root, d_name in[
         trainer = Trainer(
             model,
             loss_fn=nn.CrossEntropyLoss(),
-            config=TrainConfig(epochs=200, accumulate_steps=1, cp_name=f"{m_name}_{d_name}"),
+            config=TrainConfig(
+                epochs=200,
+                accumulate_steps=1,
+                early_stop=True,
+                cp_name=f"{m_name}_{d_name}",
+            ),
         )
         history = trainer.fit(test_loader,train_loader)
         trainer.save()

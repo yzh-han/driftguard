@@ -73,7 +73,7 @@ class LaunchConfig:
         return get_cvit(num_classes=self.num_classes, image_size=self.img_size)
 
 
-def build_client(cid: int, cfg: LaunchConfig, build_model: Callable) -> FedClient:
+def build_client(cid: int, cfg: LaunchConfig) -> FedClient:
     """Construct a single FedClient with a ResNet18 model and trainer."""
 
     args = FedClientArgs(
@@ -82,7 +82,13 @@ def build_client(cid: int, cfg: LaunchConfig, build_model: Callable) -> FedClien
         s_proxy=ServerProxy(Node("http://127.0.0.1", cfg.server_port)),
         trainer=Trainer(
             cfg.model_fn(),
-            config=TrainConfig(epochs=1, device=cfg.device, lr=0.001, accumulate_steps=1),
+            config=TrainConfig(
+                epochs=1,
+                device=cfg.device,
+                lr=0.001,
+                accumulate_steps=1,
+                early_stop=True,
+            ),
         ),
         total_steps=cfg.total_rounds,
         batch_size=cfg.batch_size,
@@ -114,6 +120,8 @@ def main() -> None:
         server_port = 12000,
         seed = 42,
     )
+    # 设置模型
+    cfg.model_fn = cfg.build_resnet18
 
     event_args = DriftEventArgs(
         n_time_steps=cfg.total_rounds,
@@ -157,7 +165,7 @@ def main() -> None:
 
     sleep(5)  
 
-    clients = [build_client(cid, cfg, cfg.model_fn) for cid in range(cfg.num_clients)]
+    clients = [build_client(cid, cfg) for cid in range(cfg.num_clients)]
     threads = [
         threading.Thread(target=client.run, args=(), daemon=True)
         for client in clients

@@ -25,6 +25,10 @@ class TrainConfig:
         weight_decay: Weight decay for AdamW.
         grad_clip: Max norm for gradient clipping; None disables clipping.
         accumulate_steps: Number of steps to accumulate gradients.
+        early_stop: Enable early stopping based on smoothed train loss.
+        early_stop_patience: Epochs to wait without improvement.
+        early_stop_min_delta: Minimum improvement to reset patience.
+        early_stop_alpha: EMA smoothing factor for train loss.
     """
     epochs: int = 10
     device: str | torch.device | None = "cuda" if torch.cuda.is_available() else "cpu"
@@ -39,10 +43,17 @@ class TrainConfig:
     grad_clip: Optional[float] = None   
     accumulate_steps: int = 1           # 累计梯度步数
 
-    cp_name: str = "init.pth"
+    
+    # early stopping
+    early_stop: bool = False
+    early_stop_patience: int = 5
+    early_stop_min_delta: float = 0.0
+    early_stop_alpha: float = 0.2
     def __post_init__(self) -> None:
         self.amp = True if self.device is torch.cuda.is_available() else False
-
+    
+    # record checkpoint name
+    cp_name: str = "init.pth"
 
 @dataclass
 class EpochMetrics:
@@ -177,13 +188,27 @@ class Trainer:
         """
 
         history: list[dict[str, float]] = [] # epoch -> metrics
+        best_ema_loss: float | None = None
+        ema_loss: float | None = None
+        no_improve = 0
 
         for epoch in range(self.config.epochs):
             train_metrics, _, _, _ = self._run_epoch(train_loader, training=True)
+            # early stopping
+            if self.config.early_stop:
+                if ema_loss is None:
+                    ema_loss = train_metrics.loss
+                else:
+                    ema_loss = (
+                        self.config.early_stop_alpha * train_metrics.loss
+                        + (1.0 - self.config.early_stop_alpha) * ema_loss
+                    )
             record = {
                 "epoch": epoch,
                 "train_loss": train_metrics.loss,
             }
+            if ema_loss is not None:
+                record["train_loss_ema"] = ema_loss
             if train_metrics.accuracy is not None:
                 record["train_accuracy"] = train_metrics.accuracy
 
@@ -194,6 +219,21 @@ class Trainer:
                     record["val_accuracy"] = val_metrics.accuracy
             history.append(record)
             logger.debug(f"Epoch {epoch+1}/{self.config.epochs}: {record}")
+            if self.config.early_stop and ema_loss is not None:
+                if best_ema_loss is None or (
+                    best_ema_loss - ema_loss > self.config.early_stop_min_delta
+                ):
+                    best_ema_loss = ema_loss
+                    no_improve = 0
+                else:
+                    no_improve += 1
+                    if no_improve >= self.config.early_stop_patience:
+                        logger.debug(
+                            "Early stopping at epoch %s (ema_loss=%.6f).",
+                            epoch + 1,
+                            ema_loss,
+                        )
+                        break
         return history
 
     def _run_epoch(

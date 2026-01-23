@@ -17,6 +17,8 @@ class ParamType(Enum):
     LOCAL = "local"
     FULL = "full"
     NONE = None
+
+    _GATE = "gate"
     
 
 @dataclass
@@ -38,6 +40,8 @@ class FedParam:
             freeze_layer(model, include_names=["local"], exclude= True)
         elif param_type == ParamType.FULL:
             pass
+        elif param_type == ParamType._GATE:
+            freeze_layer(model, include_names=["gate"], exclude= True)
         else:
             raise ValueError(f"Unknown param_type: {param_type}")
     @staticmethod
