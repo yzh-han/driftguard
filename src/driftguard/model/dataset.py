@@ -50,12 +50,12 @@ def get_train_transform(img_size: int) -> T.Compose:
         [
             T.RandomResizedCrop(img_size),  # Random crop and resize
             T.RandomHorizontalFlip(),  # Random horizontal flip with 50% probability
-            T.RandomRotation(15),  # Random rotation with a maximum of 15 degrees
+            T.RandomRotation(5),  # Random rotation with a maximum of 15 degrees
             T.ColorJitter(
-                brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1
+                brightness=0.1, contrast=0.1, saturation=0.1, hue=0.05
             ),  # Random color jitter
             T.ToTensor(),  # Convert to C×H×W (float32) Tensor, normalize to [0,1]
-            T.RandomErasing(p=0.5),  # Random erasing with 50% probability
+            T.RandomErasing(p=0.2),  # Random erasing with 20% probability
             T.Normalize(
                 mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
             ),  # ImageNet normalization

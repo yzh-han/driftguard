@@ -54,7 +54,7 @@ for ds in [DATASET.DG5, DATASET.PACS, DATASET.DDN]:
             m,
             loss_fn=nn.CrossEntropyLoss(),
             config=TrainConfig(
-                epochs=50,
+                epochs=80,
                 accumulate_steps=1,
                 early_stop=True,
                 cp_name=cp_name,
