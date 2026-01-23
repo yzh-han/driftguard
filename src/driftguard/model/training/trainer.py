@@ -1,6 +1,7 @@
 """Minimal training utilities for PyTorch models."""
 
 from dataclasses import dataclass
+import os
 from typing import Callable, Iterable, Optional, Tuple
 
 import torch
@@ -29,7 +30,7 @@ class TrainConfig:
     device: str | torch.device | None = None
 
     # automatic mixed precision
-    amp: bool = False
+    amp: bool = True if torch.cuda.is_available() else False
 
     # optimizer params
     lr: float = 1e-3
@@ -38,6 +39,7 @@ class TrainConfig:
     grad_clip: Optional[float] = None   
     accumulate_steps: int = 1           # 累计梯度步数
 
+    ck_name: str = "init.pth"
     def __post_init__(self) -> None:
         self.amp = True if self.device is torch.cuda.is_available() else False
 
@@ -103,8 +105,10 @@ class Trainer:
     def __init__(
         self,
         model: nn.Module,
-        loss_fn: Callable[[torch.Tensor, torch.Tensor], torch.Tensor],
         *,
+        loss_fn: Callable[
+            [torch.Tensor, torch.Tensor], torch.Tensor
+        ] = nn.CrossEntropyLoss(),
         config: Optional[TrainConfig] = None,
         metric_fn: Optional[Callable[[torch.Tensor, torch.Tensor], float]] = None,
     ) -> None:
@@ -137,6 +141,18 @@ class Trainer:
             GradScaler("cuda")
             if self.config.amp and self.device.type == "cuda"
             else None
+        )
+        self._ck_name = self.config.ck_name
+
+    def save(self) -> None:
+        """Save the model state dict."""
+        os.makedirs("ck", exist_ok=True)
+        torch.save(self.model.state_dict(), f"ck/{self._ck_name}")
+    def load(self) -> None:
+        """Load the model state dict."""
+        os.makedirs("ck", exist_ok=True)
+        self.model.load_state_dict(
+            torch.load(f"ck/{self._ck_name}", map_location=self.device)
         )
 
     def inference(

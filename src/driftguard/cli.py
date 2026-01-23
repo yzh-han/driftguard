@@ -1,22 +1,83 @@
+from dataclasses import dataclass
+import json
 from pathlib import Path
+
+import torch
+from driftguard.model.c_resnet.model import get_cresnet
+from driftguard.model.c_vit.model import get_cvit
 from driftguard.federate.server.retrain_strategy import Driftguard
-from driftguard.launch import (
-    LaunchConfig,
-    build_client,
-    build_resnet18,
-)
 from driftguard.federate.server.fed_server import FedServerArgs, FedServer, start_fed_server
 from driftguard.federate.client.client import FedClient, FedClientArgs
 from driftguard.data.service import DataServiceArgs, start_data_service
 from driftguard.data.drift_simulation import DriftEventArgs
-from driftguard.rpc.proxy import DataServiceProxy, Node
+from driftguard.model.training.trainer import TrainConfig, Trainer
+from driftguard.rpc.proxy import DataServiceProxy, Node, ServerProxy
 from driftguard.rpc.rpc import ThreadedXMLRPCServer
 from driftguard.config import get_logger
 from driftguard.federate.server.cluster import ClusterArgs
 import threading
-from typing import List
+from typing import Callable, List
 
 logger = get_logger("launch")
+
+@dataclass
+class LaunchConfig:
+    """Configuration for the local federated launch."""
+    
+    batch_size: int = 6
+    num_clients: int = 3
+    img_size: int = 28
+
+    meta_path: Path = Path("datasets/dg5/_meta.json")
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    data_port: int = 12099
+    server_port: int = 12000
+
+    total_rounds: int = 10
+    cluster_thr: float = 0.5
+    seed: int = 42
+
+    def __post_init__(self) -> None:
+        self.num_classes: int = self.load_num_classes(self.meta_path)
+        self.model_fn: Callable = self.build_resnet18
+
+    @staticmethod
+    def load_num_classes(meta_path: Path) -> int:
+        """Load the number of classes from a dataset meta file."""
+        meta = json.loads(meta_path.read_text())
+        labels = meta.get("labels")
+        if labels:
+            return len(labels)
+        return len(meta.get("label_to_idx", {}))
+
+
+    def build_resnet18(self) -> Callable:
+        """Build a ResNet18 model."""
+        return get_cresnet(num_classes=self.num_classes)
+    
+    def build_cvit(self) -> Callable:
+        """Build a Cvit model."""
+        return get_cvit(num_classes=self.num_classes, image_size=self.img_size)
+
+
+def build_client(cid: int, cfg: LaunchConfig, build_model: Callable) -> FedClient:
+    """Construct a single FedClient with a ResNet18 model and trainer."""
+
+    args = FedClientArgs(
+        cid=cid,
+        d_proxy=DataServiceProxy(Node("http://127.0.0.1", cfg.data_port)),
+        s_proxy=ServerProxy(Node("http://127.0.0.1", cfg.server_port)),
+        trainer=Trainer(
+            cfg.model_fn(),
+            config=TrainConfig(epochs=1, device=cfg.device, lr=0.001, accumulate_steps=1),
+        ),
+        total_steps=cfg.total_rounds,
+        batch_size=cfg.batch_size,
+        img_size=cfg.img_size,
+    )
+    client = FedClient(args)
+    return client
 
 def main() -> None:
     """Start the local data service, server, and clients."""
@@ -71,7 +132,7 @@ def main() -> None:
         ),
     )
 
-    clients = [build_client(cid, cfg, build_resnet18) for cid in range(cfg.num_clients)]
+    clients = [build_client(cid, cfg, cfg.model_fn) for cid in range(cfg.num_clients)]
     threads = [
         threading.Thread(target=client.run, args=(), daemon=True)
         for client in clients
