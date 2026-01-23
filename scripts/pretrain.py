@@ -22,9 +22,9 @@ for ds in [DATASET.PACS, DATASET.DDN]: # DATASET.DG5
 
     full_ds = datasets.ImageFolder(data_path, transform=val_tfm)
 
-    idxs = random.sample(range(len(full_ds)), 300)
+    idxs = random.sample(range(len(full_ds)), 400)
     train_idxs_1, train_idxs_2, val_idxs, train_idx  = (
-        idxs[:100], idxs[100:200], idxs[200:300], idxs[:200]
+        idxs[:100], idxs[100:200], idxs[200:300], idxs[300:400]
     )
 
     train_ds, val_ds = (
@@ -53,10 +53,10 @@ for ds in [DATASET.PACS, DATASET.DDN]: # DATASET.DG5
             continue  # skip cvit on dg5
 
         m = model.fn(n_class)
-        cp_name = f"{ds.name}-{model.value}.pth" # -> name of checkpoint file
+        cp_name = f"{ds.name}-{model.value}" # -> name of checkpoint file
 
         
-        print(f" \n ***Training {model.value} on {ds.name} ({domain}), saving to {cp_name}***")
+        print(f" \n ***Training [{model.value}] on [{ds.name} ({domain})], saving to [{cp_name}]***")
         trainer = Trainer(
             m,
             loss_fn=nn.CrossEntropyLoss(),
