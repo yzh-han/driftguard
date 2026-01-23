@@ -14,7 +14,8 @@ from pathlib import Path
 
 for ds in [DATASET.DG5, DATASET.PACS, DATASET.DDN]:
     path, n_class, img_size = ds.value
-    data_path = Path(path).parent / json.loads(Path(path).read_text())["domains"][0]
+    domain = json.loads(Path(path).read_text())["domains"][0]
+    data_path = Path(path).parent / domain
 
     train_tfm, val_tfm = get_train_transform(img_size), get_inference_transform(img_size)
 
@@ -48,6 +49,7 @@ for ds in [DATASET.DG5, DATASET.PACS, DATASET.DDN]:
         m = model.fn(n_class)
         cp_name = f"{ds.name}-{model.value}.pth" # -> name of checkpoint file
 
+        print(f"Training {model.value} on {ds.name} ({domain}), saving to {cp_name}")
         trainer = Trainer(
             m,
             loss_fn=nn.CrossEntropyLoss(),
