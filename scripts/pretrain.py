@@ -11,7 +11,7 @@ from torchvision.models import resnet18
 
 for root, test_root, image_size, num_classes, d_name in[
     # ("datasets/init_subsets/dg5_mnist", "datasets/dg5/mnist", 28, 10,"dg5"),
-    ("datasets/init_subsets/pacs_art_painting", "datasets/pacs/photo", 224,7, "pacs"),
+    ("datasets/init_subsets/pacs_art_painting", "datasets/pacs/art_painting", 224,7, "pacs"),
     # ("datasets/init_subsets/domainnet_clipart", "datasets/drift_domain_net/clipart",224, 7, "ddn")
 ]:
     # root = "datasets/init_subsets/pacs_art_painting"
@@ -40,11 +40,11 @@ for root, test_root, image_size, num_classes, d_name in[
 
         train_ds = datasets.ImageFolder(test_root, transform=train_tfm)
         val_ds = datasets.ImageFolder(test_root, transform=test_tfm)
-        train_loader = DataLoader(
-            Subset(train_ds, train_indices),
-            batch_size=16,
-            shuffle=True,
-        )
+        # train_loader = DataLoader(
+        #     Subset(train_ds, train_indices),
+        #     batch_size=16,
+        #     shuffle=True,
+        # )
         test_loader = DataLoader(
             Subset(val_ds, val_indices),
             batch_size=16,
