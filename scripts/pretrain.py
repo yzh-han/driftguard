@@ -34,9 +34,8 @@ for root, test_root, image_size, num_classes, d_name in[
         full_ds = datasets.ImageFolder(test_root, transform=test_tfm)
         sample_size = min(200, len(full_ds))
         indices = random.sample(range(len(full_ds)), sample_size)
-        split = sample_size // 2
-        train_indices = indices[:split]
-        val_indices = indices[split:]
+        train_indices = indices[:180]
+        val_indices = indices[180:]
 
         train_ds = datasets.ImageFolder(test_root, transform=train_tfm)
         val_ds = datasets.ImageFolder(test_root, transform=test_tfm)
