@@ -13,7 +13,7 @@ from torchvision.models import resnet18
 import json
 from pathlib import Path
 
-for ds in [DATASET.PACS, DATASET.DDN]: # DATASET.DG5
+for ds in [DATASET.PACS]: # DATASET.DG5, , DATASET.DDN
     path, n_class, img_size = ds.value
     domain = json.loads(Path(path).read_text())["domains"][0]
     data_path = Path(path).parent / domain
