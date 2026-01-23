@@ -7,6 +7,7 @@ from driftguard.model.dataset import get_inference_transform, get_train_transfor
 from driftguard.model.training.trainer import Trainer, TrainConfig
 from torch.utils.data import Subset
 import torch.nn as nn
+from torchvision.models import resnet18
 
 for root, test_root, image_size, num_classes, d_name in[
     # ("datasets/init_subsets/dg5_mnist", "datasets/dg5/mnist", 28, 10,"dg5"),
@@ -16,12 +17,15 @@ for root, test_root, image_size, num_classes, d_name in[
     # root = "datasets/init_subsets/pacs_art_painting"
     # test_root = "datasets/pacs/art_painting"
 
+    resnet18 = resnet18(num_classes=num_classes)
     m0 = get_cresnet(num_classes=num_classes, layers=[1,1,1])
     m1 = get_cresnet(num_classes=num_classes, layers=[2,2,1,1])
     m2 = get_cvit(num_classes=num_classes, image_size=image_size,patch_size=16)
 
     # for model, m_name in [(m1, "cresnet"), (m2, "cvit")]:
-    for model, cp_name in [(m0, f"cresnet_s_{d_name}")]:
+    # for model, cp_name in [(m0, f"cresnet_s_{d_name}")]:
+    # for model, cp_name in [(m1, f"cresnet_l_{d_name}")]:
+    for model, cp_name in [(resnet18, f"resnet18_{d_name}")]:
         train_tfm = get_inference_transform(image_size)
         train_ds = datasets.ImageFolder(root, transform=train_tfm)
         train_loader = DataLoader(train_ds, batch_size=16, shuffle=True)
