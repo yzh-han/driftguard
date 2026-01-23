@@ -23,22 +23,21 @@ for ds in [DATASET.DG5, DATASET.PACS, DATASET.DDN]:
     full_ds = datasets.ImageFolder(data_path, transform=val_tfm)
 
     idxs = random.sample(range(len(full_ds)), 300)
-    train_idxs_1, val_idxs_1,train_idxs_2, val_idxs_2  = (
-        idxs[:100], idxs[100:200], idxs[100:200], idxs[200:300]
+    train_idxs_1, train_idxs_2, val_idxs  = (
+        idxs[:100], idxs[100:200], idxs[200:300]
     )
 
-    train_ds_1, val_ds_1, train_ds_2, val_ds_2 = (
-        datasets.ImageFolder(data_path, transform=val_tfm), 
-        datasets.ImageFolder(data_path, transform=val_tfm),
+    train_ds, val_ds = (
         datasets.ImageFolder(data_path, transform=train_tfm), 
         datasets.ImageFolder(data_path, transform=val_tfm)
     )
 
-    train_loader_1, test_loader_1, train_loader_2, test_loader_2 =  (
-        DataLoader(Subset(train_ds_1, train_idxs_1), batch_size=16, shuffle=True),
-        DataLoader(Subset(val_ds_1, val_idxs_1), batch_size=16, shuffle=False),
-        DataLoader(Subset(train_ds_2, train_idxs_2), batch_size=16, shuffle=True),
-        DataLoader(Subset(val_ds_2, val_idxs_2), batch_size=16, shuffle=False)
+    train_loader_11, train_loader_12, train_loader_21, train_loader_22, test_loader = (
+        DataLoader(Subset(val_ds, train_idxs_1), batch_size=16, shuffle=True),
+        DataLoader(Subset(train_ds, train_idxs_1), batch_size=16, shuffle=True),
+        DataLoader(Subset(val_ds, train_idxs_2), batch_size=16, shuffle=True),
+        DataLoader(Subset(train_ds, train_idxs_2), batch_size=16, shuffle=True),
+        DataLoader(Subset(val_ds, val_idxs), batch_size=16, shuffle=False),
     )
     # print("train_1:", Counter(train_ds_1.targets[i] for i in train_idxs_1))
     # print("train_2:", Counter(train_ds_2.targets[i] for i in train_idxs_2))
@@ -66,8 +65,11 @@ for ds in [DATASET.DG5, DATASET.PACS, DATASET.DDN]:
                 cp_name=cp_name,
             ),
         )
-        history = trainer.fit(train_loader_1, test_loader_1)
-        history = trainer.fit(train_loader_2, test_loader_2)
+        history = trainer.fit(train_loader_11, test_loader)
+        history = trainer.fit(train_loader_12, test_loader)
+
+        history = trainer.fit(train_loader_21, test_loader)
+        history = trainer.fit(train_loader_22, test_loader)
         trainer.save()
 
         
