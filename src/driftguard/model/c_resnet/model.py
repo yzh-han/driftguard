@@ -70,23 +70,25 @@ class CRstResidualArgs:
     topk: int = 1 
     in_dim: int = 64
     norm: Callable = group_norm
-    def __post_init__(self):
-        assert len(self.layers) == 4, "layers should have 4 elements"
 
 class CRstResidual(nn.Module):
     def __init__(self, args: CRstResidualArgs):
         super().__init__()
+        self._out_dim = 256
         self.layer1 = self._make_layer(args.in_dim, 64, args.layers[0], stride=1, num_sha_exp=args.num_sha_exp, topk=args.topk)
         self.layer2 = self._make_layer(64, 128, args.layers[1], stride=2, num_sha_exp=args.num_sha_exp, topk=args.topk)
         self.layer3 = self._make_layer(128, 256, args.layers[2], stride=2, num_sha_exp=args.num_sha_exp, topk=args.topk)
-        self.layer4 = self._make_layer(256, 512, args.layers[3], stride=2, num_sha_exp=args.num_sha_exp, topk=args.topk)
-        self._out_dim = 512
+        self.layer4 = None
+        if len(args.layers) > 3:
+            self.layer4 = self._make_layer(256, 512, args.layers[3], stride=2, num_sha_exp=args.num_sha_exp, topk=args.topk)
+            self._out_dim = 512
     
     def forward(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         l1_gates = []
         l2_gates = []
         
         for layer in [self.layer1, self.layer2, self.layer3, self.layer4]:
+            if layer is None: continue
             for block in layer:
                 x, l1_w, l2_w = block(x)
                 l1_gates.append(l1_w)

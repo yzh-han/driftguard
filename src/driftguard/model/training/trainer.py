@@ -218,6 +218,7 @@ class Trainer:
                 if val_metrics.accuracy is not None:
                     record["val_accuracy"] = val_metrics.accuracy
             history.append(record)
+            
             logger.debug(f"Epoch {epoch+1}/{self.config.epochs}: {record}")
             if self.config.early_stop and ema_loss is not None:
                 if best_ema_loss is None or (
