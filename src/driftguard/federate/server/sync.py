@@ -8,6 +8,8 @@ from driftguard.federate.observation import Observation
 from driftguard.federate.params import FedParam, Params
 from driftguard.federate.server.cluster import GroupState
 from driftguard.federate.server.state import ReqState, RetrainState
+from driftguard.config import get_logger
+logger = get_logger("server_sync")
 
 @dataclass
 class ServerSyncCoordinator:
@@ -31,6 +33,7 @@ class ServerSyncCoordinator:
         with self._step_lock:
             self.req_state.step[cid].recv = True
             if self.req_state.all_recv("step"):
+                logger.debug("All [step_req] received from clients.")
                 on_step()
                 
 
@@ -50,6 +53,7 @@ class ServerSyncCoordinator:
             self.req_state.obs[cid].payload = obs
 
             if self.req_state.all_recv("obs"):
+                logger.debug("All [obs_req] received from clients.")
                 obs_list = [
                     self.req_state.obs[c].payload for c in self.req_state.obs.keys()
                 ]
@@ -79,6 +83,7 @@ class ServerSyncCoordinator:
             self.req_state.trig[cid].payload = obs, params
 
             if self.req_state.all_recv("trig"):
+                logger.debug("All [trig_req] received from clients.")
                 payloads = [
                     self.req_state.trig[c].payload for c in self.req_state.trig.keys()
                 ]

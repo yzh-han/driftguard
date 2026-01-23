@@ -82,8 +82,9 @@ class Driftguard(RetrainStrategy):
         obs_list: List[Observation],
         grp_state: GroupState,
     ) -> None:
-        fps = [obs.fingerprint for obs in obs_list]
-        if fps:
+        fps = [obs.fingerprint for obs in obs_list if obs.fingerprint is not None]
+        # AgglomerativeClustering requires at least 2 samples.
+        if len(fps) >= 2:
             grp_state.update(fps)
 
     def on_trig(

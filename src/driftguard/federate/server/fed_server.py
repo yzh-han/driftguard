@@ -95,10 +95,8 @@ class FedServer:
         # store observation
 
         def on_obs(obs_list: List[Observation], grp_state: GroupState) -> None:
-
-            self.rt_strategy.on_obs(obs_list, grp_state)
-
             logger.info(f"Observations uploaded from client {cid}")
+            self.rt_strategy.on_obs(obs_list, grp_state)
 
         self._sync.await_upload_obs(cid, on_obs, obs, self.grp_state)
 
