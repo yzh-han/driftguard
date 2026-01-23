@@ -2,11 +2,12 @@
 
 from dataclasses import dataclass
 import copy
-from typing import Callable, List, Tuple
+from typing import Callable, List, Tuple, cast
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision.models import resnet18
+from torchvision.models.resnet import BasicBlock
 
 from driftguard.model.moe import Gate, GateArgs 
 
@@ -216,11 +217,11 @@ class CRstExp(nn.Module):
     def __init__(self, args: CRstExpArgs):
         super().__init__()
         
-        self.conv1 = nn.Conv2d(args.in_dim, args.in_dim, kernel_size=3, stride=args.stride, padding=1, bias=False)
-        self.bn1 = args.norm(args.in_dim)
+        self.conv1 = nn.Conv2d(args.in_dim, args.out_dim, kernel_size=3, stride=args.stride, padding=1, bias=False)
+        self.bn1 = args.norm(args.out_dim)
         self.relu = nn.ReLU(inplace=True)
 
-        self.conv2 = nn.Conv2d(args.in_dim, args.out_dim, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv2 = nn.Conv2d(args.out_dim, args.out_dim, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn2 = args.norm(args.out_dim)
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         out = self.relu(self.bn1(self.conv1(x)))
@@ -287,13 +288,57 @@ class CResNet(nn.Module):
         x = self.head(x)
         return x, l1_gates, l2_gates
 
+def initialize_shared_experts_from_resnet18(
+    residual: CRstResidual,
+    *,
+    pretrained: bool = True,
+    noise_std: float = 1e-3,
+) -> None:
+    """Initialize shared experts from a ResNet-18 backbone with optional noise.
+
+    Args:
+        residual: Residual trunk to initialize in-place.
+        pretrained: Whether to load ImageNet pretrained weights.
+        noise_std: Standard deviation of Gaussian noise added to expert weights.
+    """
+
+    weights = "IMAGENET1K_V1" if pretrained else None
+    base = resnet18(weights=weights)
+    res_layers = [base.layer1, base.layer2, base.layer3, base.layer4]
+    cr_layers = [residual.layer1, residual.layer2, residual.layer3, residual.layer4]
+
+    def _copy_expert_weights(expert: CRstExp, block: BasicBlock) -> None:
+        if expert.conv1.weight.shape == block.conv1.weight.shape:
+            expert.conv1.weight.copy_(block.conv1.weight)
+        elif expert.conv1.weight.shape == block.conv2.weight.shape:
+            expert.conv1.weight.copy_(block.conv2.weight)
+
+        if expert.conv2.weight.shape == block.conv2.weight.shape:
+            expert.conv2.weight.copy_(block.conv2.weight)
+        elif expert.conv2.weight.shape == block.conv1.weight.shape:
+            expert.conv2.weight.copy_(block.conv1.weight)
+
+        if noise_std > 0:
+            expert.conv1.weight.add_(noise_std * torch.randn_like(expert.conv1.weight))
+            expert.conv2.weight.add_(noise_std * torch.randn_like(expert.conv2.weight))
+
+    with torch.no_grad():
+        for cr_layer, res_layer in zip(cr_layers, res_layers, strict=False):
+            if cr_layer is None:
+                continue
+            for cr_block, res_block in zip(cr_layer, res_layer, strict=False):
+                res_block = cast(BasicBlock, res_block)
+                for expert in cr_block.shared:
+                    _copy_expert_weights(expert, res_block)
+
 def get_cresnet(
     num_classes: int = 10,
     layers: List[int] = [2, 2, 1, 1], # [2, 2, 1, 1] for 18, [1,1,1] for 8
     num_sha_exp: int = 3,
     topk: int = 1,
-    norm: Callable = group_norm
-) -> nn.Module:
+    norm: Callable = group_norm,
+    rst_wgts: bool = True,
+) -> CResNet:
     """  
     Create a CResNet-8 model for lightweight federated learning.
     """
@@ -306,5 +351,9 @@ def get_cresnet(
     residual = CRstResidual(residual_args)
     head = CRstHead(in_dim=residual._out_dim, num_classes=num_classes)
     model = CResNet(stem, residual, head)
-    
+    if rst_wgts:
+        initialize_shared_experts_from_resnet18(model.residual, pretrained=True, noise_std=1e-3)
+
     return model
+
+

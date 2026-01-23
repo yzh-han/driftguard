@@ -24,9 +24,9 @@ for root, test_root, image_size, num_classes, d_name in[
 
     # for model, m_name in [(m1, "cresnet"), (m2, "cvit")]:
     # for model, cp_name in [(m0, f"cresnet_s_{d_name}")]:
-    # for model, cp_name in [(m1, f"cresnet_l_{d_name}")]:
+    for model, cp_name in [(m1, f"cresnet_l_{d_name}")]:
     # for model, cp_name in [(resnet18, f"resnet18_{d_name}")]:
-    for model, cp_name in [(m2, f"cvit_{d_name}")]:
+    # for model, cp_name in [(m2, f"cvit_{d_name}")]:
         train_tfm = get_inference_transform(image_size)
         train_ds = datasets.ImageFolder(root, transform=train_tfm)
         train_loader = DataLoader(train_ds, batch_size=16, shuffle=True)
