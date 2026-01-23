@@ -70,12 +70,13 @@ class FedClient:
                 params, rt_cfg = self.s_proxy.req_trig((self.cid, obs, params))
                 
                 if not rt_cfg.trigger or self.cid not in rt_cfg.selection:
-                    break
+                    continue
 
                 if params: 
                     FedParam.set(self.model, params, rt_cfg.param_type)
                 
                 FedParam.freeze_exclude(self.model, rt_cfg.param_type)
+                FedParam.unfreeze(self.model, ["gate"])
                 
                 self.train(samples)
                 params = FedParam.get(self.model, rt_cfg.param_type)

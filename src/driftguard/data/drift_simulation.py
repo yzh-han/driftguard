@@ -4,7 +4,9 @@ from collections import deque
 import random
 from dataclasses import dataclass
 from typing import List
+from driftguard.config import get_logger
 
+logger = get_logger("drift_simulation")
 
 @dataclass(frozen=True)
 class DriftEvent:
@@ -57,6 +59,9 @@ class ClientState:
             event: DriftEvent instance.
         """
         for cid in event.clients:
+            logger.debug(
+                f" [Drift] cid: {cid}, time_step: {event.time_step}, old: {self.c_to_dist[cid]}"
+            )
             dest = self.c_to_dest[cid] = (
                 self.c_to_dest[cid] + event.drift_dist
             ) % self.num_domains  # new domain destination index
@@ -65,9 +70,7 @@ class ClientState:
             dest_prob = dist[dest] + 1.0 / event.duration
 
             remain_other = 1.0 - dest_prob
-            print(
-                f"update cid: {cid}, new dest: {dest}, dest_prob: {dest_prob} remain_other: {remain_other}"
-            )
+            
 
             if remain_other <= 0.0:
                 dist[:] = [0.0] * self.num_domains
@@ -79,6 +82,7 @@ class ClientState:
                     dist[d] = (
                         dist[d] * remain_other / total_other if d != dest else dest_prob
                     )
+            logger.debug(f" [Drift] cid: {cid}, time_step: {event.time_step}, new: {self.c_to_dist[cid]}")
             assert abs(sum(dist) - 1.0) < 1e-6, "Probabilities must sum to 1.0"
 
     def get_distribution(self, cid: int) -> list[float]:

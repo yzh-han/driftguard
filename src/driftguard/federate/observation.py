@@ -65,7 +65,7 @@ class Fp:
         w = (a.w * b.w) ** 0.5
 
         dist = ((a.label_gate_norm - b.label_gate_norm) ** 2) * w[:, None, None]
-        dist = dist.sum()  # / w.sum()
+        dist = dist.mean()  # / w.sum()
 
         return dist
 

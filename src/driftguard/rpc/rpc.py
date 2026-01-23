@@ -3,10 +3,15 @@ from socketserver import ThreadingMixIn
 from types import NoneType
 import xmlrpc.client
 import pickle
+import traceback
 import inspect
 from typing import List, TypeVar, Optional, Tuple, Callable
 from functools import wraps
 from xmlrpc.server import SimpleXMLRPCServer
+
+from driftguard.config import get_logger
+
+logger = get_logger("rpc")
 
 @dataclass
 class Node:
@@ -43,16 +48,21 @@ def server_func(original_func: Callable) -> Callable:
     def wrapper(*args) -> xmlrpc.client.Binary | NoneType:
         """Wrapper function to handle RPC calls."""
     
-        if filtered:
-            args = list(args)
-            args[-1] = pickle.loads(args[-1].data)  # -> binary to Tuple
-            assert isinstance(args[-1], tuple | list), "Expected tuple argument"
+        try:
+            if filtered:
+                args = list(args)
+                args[-1] = pickle.loads(args[-1].data)  # -> binary to Tuple
+                assert isinstance(args[-1], tuple | list), "Expected tuple argument"
 
-        # result: Optional[xmlrpc.client.Binary] = None
-        result = original_func(*args)
-        assert isinstance(result, tuple | list | NoneType), "Expected tuple return value"
-
-        return xmlrpc.client.Binary(pickle.dumps(result)) if result else None # -> Tuple to binary
+            # result: Optional[xmlrpc.client.Binary] = None
+            result = original_func(*args)
+            assert isinstance(result, tuple | list | NoneType), "Expected tuple return value"
+            return (
+                xmlrpc.client.Binary(pickle.dumps(result)) if result else None
+            )  # -> Tuple to binary
+        except Exception:
+            logger.error("RPC server exception:\n%s", traceback.format_exc())
+            raise
         
     return wrapper
 

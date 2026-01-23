@@ -28,7 +28,7 @@ logger = config.get_logger("data.service")
 class DataServiceArgs:
     meta_path: Path | str
     num_clients: int
-    batch_size: int
+    sample_size: int
     drift_event_args: DriftEventArgs
     seed: int | None
 
@@ -38,7 +38,7 @@ class DataService:
     Attributes:
         dataset: DomainDataset instance.
         client_states: ClientState instance.
-        batch_size: Number of samples per client request.
+        sample_size: Number of samples per client request.
     """
 
     def __init__(
@@ -55,7 +55,7 @@ class DataService:
             num_clients=args.num_clients,
             seed=args.seed,
         )
-        self.batch_size: int = args.batch_size
+        self.sample_size: int = args.sample_size
 
         self._time_step: int = 1
         self._events: deque[DriftEvent] = generate_drift_events(
@@ -85,7 +85,7 @@ class DataService:
                 self.client_states.update(event)
 
         samples = self.dataset.get(
-            self.batch_size, self.client_states.get_distribution(cid)
+            self.sample_size, self.client_states.get_distribution(cid)
         )
         logger.info(
             f"[get_data] cid: {cid}\ttime_step: {time_step}\tdistribution: {self.client_states.get_distribution(cid)}"

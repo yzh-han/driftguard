@@ -5,7 +5,14 @@ from sklearn.cluster import AgglomerativeClustering
 
 from driftguard.federate.observation import Fp
 from driftguard.federate.params import Params
+from driftguard.config import get_logger
 
+logger = get_logger("cluster")
+
+@dataclass
+class Proto:
+    cid: int
+    fp: Fp
 
 @dataclass
 class Group:
@@ -21,7 +28,7 @@ class Group:
 
     def __post_init__(self):
         """Initialize optional attributes for type checking."""
-        self.proto: Fp
+        self.proto: Proto
         self.params: Params = []
 
         self._waitlist: List[int] = []
@@ -118,7 +125,7 @@ class GroupState:
         )
 
         self.groups: List[Group] = [
-            Group(clients=[cid for cid in range(num_clients)])
+            
         ]  # 初始单一组，包含所有客户端
     @property
     def all_clients(self) -> List[int]:
@@ -149,59 +156,26 @@ class GroupState:
         """
         # 0 计算距离矩阵
         D = Fp.pairwise_D(fps)  # 本轮30个
+        logger.debug(f"Distance matrix D:\n{D}")
         # 1 聚类
         clu_raw = self._model.fit_predict(D)
+        logger.debug(f"Cluster labels:\n{clu_raw}")
         # 2 初始分组并设置原型
         groups = Group.from_raw(clu_raw)
         for g in groups:
-            g.proto = fps[g.proto_cid(D)]
+            cid = g.proto_cid(D)
+            g.proto = Proto(cid, fps[cid])
         # 3 对齐簇
         groups =self._align(groups)
+        logger.debug(f"Aligned groups:\n{groups}")
         # 4 合并小类
         groups = self._merge(groups, D)
+        logger.debug(f"Merged groups:\n{groups}")
         # 5 更新原型
         for g in groups:
-            g.proto = fps[g.proto_cid(D)]
+            cid = g.proto_cid(D)
+            g.proto = Proto(cid, fps[cid])
         self.groups = groups
-
-    def _merge(
-        self,
-        groups: List[Group],
-        D: np.ndarray,
-    ) -> List[Group]:
-        """Merge small clusters into nearest larger clusters.
-
-        Args:
-            groups: Group list to merge.
-            D: Pairwise distance matrix for all clients.
-
-        Returns:
-            Merged list of groups.
-        """
-        while True:
-            # 找到最小的簇
-            gidx_min, g_min = min(enumerate(groups), key=lambda i_g: i_g[1].size)
-
-            if g_min.size >= self._min_group_size:
-                break  # 全部满足最小簇大小，结束
-
-            # 所有簇的原型
-            proto_cids: List[int] = [g.proto_cid(D) for g in groups]  # [cid, ...]
-            # 非原型 inf
-            D_proto = np.full(D.shape, np.inf)
-            D_proto[np.ix_(proto_cids, proto_cids)] = D[np.ix_(proto_cids, proto_cids)]
-            D_proto[:, proto_cids[gidx_min]] = np.inf
-            proto_nearest = np.argmin(D_proto[proto_cids[gidx_min], :])
-
-            # 找到最近的簇
-            g_nearest = self.get_group(int(proto_nearest), groups)
-            gidx_nearest = groups.index(g_nearest)
-
-            # 合并簇
-            clients = groups.pop(gidx_min).clients
-            groups[gidx_nearest].clients.extend(clients)
-
-        return groups
 
     def _align(self, new_groups: List[Group]) -> List[Group]:
         """Align new clusters with existing groups by prototype distance.
@@ -218,26 +192,75 @@ class GroupState:
         # 对齐已有簇
 
         # 计算簇间距离 [old, new]
-        fgs: List[Fp] = [g.proto for g in old_groups + new_groups]
-        D = Fp.pairwise_D(fgs)[
+        fgs: List[Fp] = [g.proto.fp for g in old_groups + new_groups]
+        D_proto = Fp.pairwise_D(fgs)[
             np.ix_(range(len(old_groups)), range(len(old_groups), len(fgs)))
         ]  # [old, new]
 
         while True:
-            if D.size == 0 or D.min() > self._match_thr:
+            if D_proto.size == 0 or D_proto.min() > self._match_thr:
                 break
 
             # 找最近的簇对
-            old_idx, new_idx = np.unravel_index(np.argmin(D), D.shape)
+            old_idx, new_idx = np.unravel_index(np.argmin(D_proto), D_proto.shape)
             new_groups[new_idx].from_old(old_groups[old_idx]) # 传递参数
             groups.append(new_groups[new_idx])
 
             # 删除已对齐的簇
-            D = np.delete(D, old_idx, axis=0)
-            D = np.delete(D, new_idx, axis=1)
+            D_proto = np.delete(D_proto, old_idx, axis=0)
+            D_proto = np.delete(D_proto, new_idx, axis=1)
             old_groups.pop(old_idx)
             new_groups.pop(new_idx)
 
         # 剩余的新簇直接加入
         groups.extend(new_groups)
         return groups
+    
+    def _merge(
+        self,
+        groups: List[Group],
+        D: np.ndarray,
+    ) -> List[Group]:
+        """Merge small clusters into nearest larger clusters.
+
+        Args:
+            groups: Group list to merge.
+            D: Pairwise distance matrix for all clients.
+
+        Returns:
+            Merged list of groups.
+        """
+        D_ = D.copy()
+        np.fill_diagonal(D_, np.inf) # self-distance to inf
+        
+
+        while True:
+            # 全部满足最小簇大小，或只剩一个组结束:
+            # 找到最小的簇
+            g_sm_idx, g_sm = min(enumerate(groups), key=lambda i_g: i_g[1].size)
+
+            if g_sm.size >= self._min_group_size or len(groups) == 1:
+                break
+
+            # 所有簇的原型
+            protos: List[Proto] = [g.proto for g in groups]  # [cid, ...]
+            # 非原型 inf
+            D_sm = np.full(D.shape, np.inf)
+            p_cids = [p.cid for p in protos]
+            D_sm[np.ix_(p_cids, p_cids)] = D_[np.ix_(p_cids, p_cids)]
+            D_sm[:, g_sm.proto.cid] = np.inf # dim = 1, self to inf
+            
+            logger.debug(f"D to smallest g:\n{D_}")
+            # 找最近的簇
+            proto_id = int(np.argmin(D_sm[g_sm.proto.cid, :]))
+            assert proto_id != g_sm.proto.cid, "Nearest prototype should not be itself."
+
+            # 合并簇
+            g_target = self.get_group(proto_id, groups)
+            g_target.clients.extend(g_sm.clients)
+            groups.remove(g_sm)
+
+        return groups
+
+
+    

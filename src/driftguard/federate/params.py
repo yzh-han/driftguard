@@ -33,16 +33,19 @@ class FedParam:
     @staticmethod
     def freeze_exclude(model: nn.Module, param_type: ParamType) -> None:
         if param_type == ParamType.SHARED:
-            freeze_layer(model, include_names=["local", "gate"], exclude=True)
+            freeze_layer(model, include_names=["local"], exclude=True)
         elif param_type == ParamType.LOCAL:
-            freeze_layer(model, include_names=["local"])
+            freeze_layer(model, include_names=["local"], exclude= True)
         elif param_type == ParamType.FULL:
             pass
         else:
             raise ValueError(f"Unknown param_type: {param_type}")
     @staticmethod
-    def unfreeze(model: nn.Module) -> None:
-        unfreeze_layer(model)
+    def unfreeze(model: nn.Module, include_names: List[str] = []) -> None:
+        if include_names:
+            unfreeze_layer(model, include_names=include_names)
+        else:
+            unfreeze_layer(model)
 
     @staticmethod
     def set(model: nn.Module, params: Params, param_type: ParamType) -> None:

@@ -118,7 +118,7 @@ class Driftguard(RetrainStrategy):
         
             if reliance < self.thr_reliance:
                 # - 全局重训练
-                rt_state.rt_cfg = RetrainConfig(True, grp_state.all_clients, ParamType.FULL)
+                rt_state.rt_cfg = RetrainConfig(True, grp_state.all_clients, ParamType.SHARED)
                 
                 rt_state.remain_round = rt_state.rt_round
                 logger.debug(f"Rt Cfg: {rt_state.rt_cfg}")

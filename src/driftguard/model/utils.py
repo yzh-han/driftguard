@@ -20,8 +20,10 @@ def freeze_layer(model: nn.Module, include_names: List[str] = [], exclude: bool 
         else:
             if any(n in name for n in include_names) or not include_names:
                 param.requires_grad = False
-    
-    logger.info(f"Frozen layers starting with '{include_names}'")
+
+    logger.info(
+        f"Frozen layers {'includes' if not exclude else 'excludes'} {include_names}"
+    )
 
 def unfreeze_layer(model: nn.Module, include_names: List[str] = [], exclude: bool = False) -> None:
     """Unfreeze all model parameters.
@@ -38,8 +40,10 @@ def unfreeze_layer(model: nn.Module, include_names: List[str] = [], exclude: boo
         else:
             if any(n in name for n in include_names) or not include_names:
                 param.requires_grad = True
-            
-    logger.info(f"Unfrozen layers starting with '{include_names}'")
+
+    logger.info(
+        f"Unfrozen layers {'includes' if not exclude else 'excludes'} '{include_names}'"
+    )
 
 def get_total_params(model: nn.Module) -> int:
     """Get total parameter count of the model.
