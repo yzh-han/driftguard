@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from enum import Enum
-from turtle import rt
 from typing import Callable, List
 
 from driftguard.config import get_logger
@@ -135,7 +133,7 @@ class Driftguard(RetrainStrategy):
                 # - 不重训练 keep cfg
                 logger.debug(f"Rt Cfg: {rt_state.rt_cfg}")
 
-        elif rt.remain_round > 0:
+        elif rt_state.remain_round > 0:
             # 2. 继续训练
             # 2.1 组内训练
             if rt_state.rt_cfg.param_type == ParamType.LOCAL:
