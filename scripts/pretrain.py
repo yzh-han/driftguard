@@ -36,7 +36,7 @@ for root, test_root, d_name in[
             loss_fn=nn.CrossEntropyLoss(),
             config=TrainConfig(epochs=200, accumulate_steps=1, cp_name=f"{m_name}_{d_name}"),
         )
-        history = trainer.fit(train_loader, test_loader)
+        history = trainer.fit(test_loader,train_loader)
         trainer.save()
 
         # x,w1,w2,s=trainer.inference(test_loader)
