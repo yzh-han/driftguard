@@ -1,3 +1,4 @@
+from collections import Counter
 import random
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
@@ -21,9 +22,9 @@ for ds in [DATASET.DG5, DATASET.PACS, DATASET.DDN]:
 
     full_ds = datasets.ImageFolder(data_path, transform=val_tfm)
 
-    idxs = random.sample(range(len(full_ds)), 200)
+    idxs = random.sample(range(len(full_ds)), 300)
     train_idxs_1, val_idxs_1,train_idxs_2, val_idxs_2  = (
-        idxs[:80], idxs[80:100], idxs[100:180], idxs[180:200]
+        idxs[:100], idxs[100:200], idxs[100:200], idxs[200:300]
     )
 
     train_ds_1, val_ds_1, train_ds_2, val_ds_2 = (
@@ -39,8 +40,12 @@ for ds in [DATASET.DG5, DATASET.PACS, DATASET.DDN]:
         DataLoader(Subset(train_ds_2, train_idxs_2), batch_size=16, shuffle=True),
         DataLoader(Subset(val_ds_2, val_idxs_2), batch_size=16, shuffle=False)
     )
+    # print("train_1:", Counter(train_ds_1.targets[i] for i in train_idxs_1))
+    # print("train_2:", Counter(train_ds_2.targets[i] for i in train_idxs_2))
+    # break
 
     for model in [MODEL.CRST_S, MODEL.CRST_M, MODEL.CVIT]:
+        
         if model == MODEL.CRST_S and (ds == DATASET.PACS or ds == DATASET.DDN):
             continue  # skip cresnet_s on pacs and ddn
         if model == MODEL.CVIT and ds == DATASET.DG5:
