@@ -48,13 +48,14 @@ for ds in [DATASET.DG5, DATASET.PACS, DATASET.DDN]:
         
         if model == MODEL.CRST_S and (ds == DATASET.PACS or ds == DATASET.DDN):
             continue  # skip cresnet_s on pacs and ddn
-        if model == MODEL.CVIT and ds == DATASET.DG5:
+        if (model == MODEL.CVIT or model == MODEL.CRST_M) and ds == DATASET.DG5:
             continue  # skip cvit on dg5
 
         m = model.fn(n_class)
         cp_name = f"{ds.name}-{model.value}.pth" # -> name of checkpoint file
 
-        print(f"Training {model.value} on {ds.name} ({domain}), saving to {cp_name}")
+        
+        print(f" \n ***Training {model.value} on {ds.name} ({domain}), saving to {cp_name}***")
         trainer = Trainer(
             m,
             loss_fn=nn.CrossEntropyLoss(),
