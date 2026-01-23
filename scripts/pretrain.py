@@ -1,27 +1,45 @@
+import random
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from driftguard.model.c_resnet.model import get_cresnet
 from driftguard.model.c_vit.model import get_cvit
-from driftguard.model.dataset import get_train_transform
+from driftguard.model.dataset import get_inference_transform, get_train_transform
 from driftguard.model.training.trainer import Trainer, TrainConfig
+from torch.utils.data import Subset
 import torch.nn as nn
 
-root = "datasets/init_subsets/pacs_art_painting"
-tfm = get_train_transform(224)
-ds = datasets.ImageFolder(root, transform=tfm)
-loader = DataLoader(ds, batch_size=10, shuffle=False)
+for root, test_root, d_name in[
+    ("datasets/init_subsets/pacs_art_painting", "datasets/pacs/art_painting", "pacs"),
+    ("datasets/init_subsets/domainnet_clipart", "datasets/drift_domain_net/clipart", "ddn")
+]:
 
-model = get_cresnet(num_classes=10, layers=[1,1,1,1])
-# model = get_cvit(num_classes=10, image_size=224,patch_size=16)
+    # root = "datasets/init_subsets/pacs_art_painting"
+    # test_root = "datasets/pacs/art_painting"
 
-trainer = Trainer(
-    model,
-    loss_fn=nn.CrossEntropyLoss(),
-    config=TrainConfig(epochs=100, device="cpu", accumulate_steps=3),
-)
-# history = trainer.fit(loader, None)
-metrix, l1_w, l2_w, softs = trainer.inference(loader)
-print(softs.shape, l2_w.shape)
+    m1 = get_cresnet(num_classes=7, layers=[2,2,1,1])
+    m2 = get_cvit(num_classes=7, image_size=224,patch_size=16)
+
+    for model, m_name in [(m1, "cresnet"), (m2, "cvit")]:
+        train_tfm = get_train_transform(224)
+        train_ds = datasets.ImageFolder(root, transform=train_tfm)
+        train_loader = DataLoader(train_ds, batch_size=16, shuffle=True)
+
+        test_tfm = get_inference_transform(224)
+        test_ds = datasets.ImageFolder(test_root, transform=test_tfm)
+        indices = random.sample(range(len(test_ds)), 100)
+        test_ds = Subset(test_ds, indices)
+        test_loader = DataLoader(test_ds, batch_size=16, shuffle=False)
+
+
+
+        trainer = Trainer(
+            model,
+            loss_fn=nn.CrossEntropyLoss(),
+            config=TrainConfig(epochs=200, accumulate_steps=1, cp_name=f"{m_name}_{d_name}"),
+        )
+        history = trainer.fit(train_loader, test_loader)
+        trainer.save()
+
 
 
 

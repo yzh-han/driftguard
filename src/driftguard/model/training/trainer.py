@@ -27,7 +27,7 @@ class TrainConfig:
         accumulate_steps: Number of steps to accumulate gradients.
     """
     epochs: int = 10
-    device: str | torch.device | None = None
+    device: str | torch.device | None = "cuda" if torch.cuda.is_available() else "cpu"
 
     # automatic mixed precision
     amp: bool = True if torch.cuda.is_available() else False
@@ -39,7 +39,7 @@ class TrainConfig:
     grad_clip: Optional[float] = None   
     accumulate_steps: int = 1           # 累计梯度步数
 
-    ck_name: str = "init.pth"
+    cp_name: str = "init.pth"
     def __post_init__(self) -> None:
         self.amp = True if self.device is torch.cuda.is_available() else False
 
@@ -142,17 +142,17 @@ class Trainer:
             if self.config.amp and self.device.type == "cuda"
             else None
         )
-        self._ck_name = self.config.ck_name
+        self._cp_name = self.config.cp_name
 
     def save(self) -> None:
         """Save the model state dict."""
-        os.makedirs("ck", exist_ok=True)
-        torch.save(self.model.state_dict(), f"ck/{self._ck_name}")
+        os.makedirs("cp", exist_ok=True)
+        torch.save(self.model.state_dict(), f"cp/{self._cp_name}")
     def load(self) -> None:
         """Load the model state dict."""
-        os.makedirs("ck", exist_ok=True)
+        os.makedirs("cp", exist_ok=True)
         self.model.load_state_dict(
-            torch.load(f"ck/{self._ck_name}", map_location=self.device)
+            torch.load(f"cp/{self._cp_name}", map_location=self.device)
         )
 
     def inference(
