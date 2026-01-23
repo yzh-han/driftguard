@@ -1,4 +1,5 @@
-cp/
+cp/exp/
+
 *.ipynb
 *.md
 # agent.md
