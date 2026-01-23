@@ -1,6 +1,7 @@
 import random
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
+from driftguard.exp import DATASET, MODEL
 from driftguard.model.c_resnet.model import get_cresnet
 from driftguard.model.c_vit.model import get_cvit
 from driftguard.model.dataset import get_inference_transform, get_train_transform
@@ -8,63 +9,58 @@ from driftguard.model.training.trainer import Trainer, TrainConfig
 from torch.utils.data import Subset
 import torch.nn as nn
 from torchvision.models import resnet18
+import json
+from pathlib import Path
 
-for root, test_root, image_size, num_classes, d_name in[
-    # ("datasets/init_subsets/dg5_mnist", "datasets/dg5/mnist", 28, 10,"dg5"),
-    ("datasets/init_subsets/pacs_art_painting", "datasets/pacs/art_painting", 224,7, "pacs"),
-    # ("datasets/init_subsets/domainnet_clipart", "datasets/drift_domain_net/clipart",224, 7, "ddn")
-]:
-    # root = "datasets/init_subsets/pacs_art_painting"
-    # test_root = "datasets/pacs/art_painting"
+for ds in [DATASET.DG5, DATASET.PACS, DATASET.DDN]:
+    path, n_class, img_size = ds.value
+    data_path = Path(path).parent / json.loads(Path(path).read_text())["domains"][0]
 
-    resnet18 = resnet18(num_classes=num_classes)
-    m0 = get_cresnet(num_classes=num_classes, layers=[1,1,1])
-    m1 = get_cresnet(num_classes=num_classes, layers=[2,2,2,2])
-    m2 = get_cvit(num_classes=num_classes, image_size=image_size,patch_size=16)
+    train_tfm, val_tfm = get_train_transform(img_size), get_inference_transform(img_size)
 
-    # for model, m_name in [(m1, "cresnet"), (m2, "cvit")]:
-    # for model, cp_name in [(m0, f"cresnet_s_{d_name}")]:
-    for model, cp_name in [(m1, f"cresnet_l_{d_name}")]:
-    # for model, cp_name in [(resnet18, f"resnet18_{d_name}")]:
-    # for model, cp_name in [(m2, f"cvit_{d_name}")]:
-        train_tfm = get_inference_transform(image_size)
-        train_ds = datasets.ImageFolder(root, transform=train_tfm)
-        train_loader = DataLoader(train_ds, batch_size=16, shuffle=True)
+    full_ds = datasets.ImageFolder(data_path, transform=val_tfm)
 
-        test_tfm = get_inference_transform(image_size)
-        full_ds = datasets.ImageFolder(test_root, transform=test_tfm)
-        sample_size = min(200, len(full_ds))
-        indices = random.sample(range(len(full_ds)), sample_size)
-        train_indices = indices[:180]
-        val_indices = indices[180:]
+    idxs = random.sample(range(len(full_ds)), 200)
+    train_idxs_1, val_idxs_1,train_idxs_2, val_idxs_2  = (
+        idxs[:80], idxs[80:100], idxs[100:180], idxs[180:200]
+    )
 
-        train_ds = datasets.ImageFolder(test_root, transform=train_tfm)
-        val_ds = datasets.ImageFolder(test_root, transform=test_tfm)
-        # train_loader = DataLoader(
-        #     Subset(train_ds, train_indices),
-        #     batch_size=16,
-        #     shuffle=True,
-        # )
-        test_loader = DataLoader(
-            Subset(val_ds, val_indices),
-            batch_size=16,
-            shuffle=False,
-        )
+    train_ds_1, val_ds_1, train_ds_2, val_ds_2 = (
+        datasets.ImageFolder(data_path, transform=val_tfm), 
+        datasets.ImageFolder(data_path, transform=val_tfm),
+        datasets.ImageFolder(data_path, transform=train_tfm), 
+        datasets.ImageFolder(data_path, transform=val_tfm)
+    )
 
+    train_loader_1, test_loader_1, train_loader_2, test_loader_2 =  (
+        DataLoader(Subset(train_ds_1, train_idxs_1), batch_size=16, shuffle=True),
+        DataLoader(Subset(val_ds_1, val_idxs_1), batch_size=16, shuffle=False),
+        DataLoader(Subset(train_ds_2, train_idxs_2), batch_size=16, shuffle=True),
+        DataLoader(Subset(val_ds_2, val_idxs_2), batch_size=16, shuffle=False)
+    )
 
+    for model in [MODEL.CRST_S, MODEL.CRST_M, MODEL.CVIT]:
+        if model == MODEL.CRST_S and (ds == DATASET.PACS or ds == DATASET.DDN):
+            continue  # skip cresnet_s on pacs and ddn
+        if model == MODEL.CVIT and ds == DATASET.DG5:
+            continue  # skip cvit on dg5
+
+        m = model.fn(n_class)
+        cp_name = f"{ds.name}-{model.value}.pth" # -> name of checkpoint file
 
         trainer = Trainer(
-            model,
+            m,
             loss_fn=nn.CrossEntropyLoss(),
             config=TrainConfig(
-                epochs=200,
+                epochs=50,
                 accumulate_steps=1,
                 early_stop=True,
-                cp_name=f"{cp_name}.pth",
+                cp_name=cp_name,
             ),
         )
-        history = trainer.fit(train_loader, test_loader)
+        history = trainer.fit(train_loader_1, test_loader_1)
+        history = trainer.fit(train_loader_2, test_loader_2)
         trainer.save()
 
-        # x,w1,w2,s=trainer.inference(test_loader)
-        # print(s.shape)
+        
+

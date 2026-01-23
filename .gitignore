@@ -1,3 +1,4 @@
+
 cp/exp/
 
 *.ipynb
@@ -9,8 +10,10 @@ agent.md
 .DS_Store
 
 # datasets
-datasets/*
-datasets/AGENT.md
+datasets/**/*
+!datasets/*/
+!datasets/**/_meta.json
+
 
 # virtual environments
 .venv/

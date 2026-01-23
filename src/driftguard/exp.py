@@ -1,29 +1,100 @@
 
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Dict, List
-import os
-import json
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Callable, Dict, List
 
+from anyio import Path
+import torch
+
+from driftguard.federate.server.retrain_strategy import RetrainStrategy, Driftguard
+from driftguard.model.c_resnet.model import get_cresnet
+from driftguard.model.c_vit.model import get_cvit
+
+class DATASET(Enum):
+    """
+    (meta_path, num_classes, image_size)
+    """
+    DG5 = (Path("datasets/dg5/_meta.json"), 10, 28)
+    PACS = (Path("datasets/pacs/_meta.json"), 7, 224)
+    DDN = (Path("datasets/drift_domain_net/_meta.json"), 7, 224)
+
+
+
+class MODEL(Enum):
+    """Model building functions."""
+    CRST_S = "crst_s"
+    CRST_M = "crst_m"
+    CVIT = "cvit"
+    
+    @property
+    def fn(self) -> Callable:
+        if self == MODEL.CRST_S:
+            return MODEL.cresnet_s
+        elif self == MODEL.CRST_M:
+            return MODEL.cresnet_m
+        elif self == MODEL.CVIT:
+            return MODEL.cvit
+        else:
+            raise ValueError(f"Unknown model function: {self}")
+    @staticmethod
+    def cresnet_s(num_classes: int) -> Callable:
+        """Build a ResNet18 model."""
+        return get_cresnet(num_classes, [1,1,1])
+    @staticmethod
+    def cresnet_m(num_classes: int) -> Callable:
+        """Build a ResNet18 model."""
+        return get_cresnet(num_classes)
+    @staticmethod
+    def cvit(num_classes: int) -> Callable:
+        """Build a Cvit model."""
+        return get_cvit(num_classes)
+
+    
 @dataclass
 class Exp:
     name: str
+    dataset: DATASET
+    model: MODEL
+    strategy: RetrainStrategy
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
-    def __post_init__(self) -> None:
-        self.metrics: Dict[str, List] = {
-            "acc": [],
-            "cost": [],
-        } 
-    
-    def update_acc(self, time_step: int, acc: float) -> None:
-        self.metrics["acc"].append((time_step, acc))
-    
-    def update_cost(self, time_step: int, trainable_params: float) -> None:
-        self.metrics["cost"].append((time_step, trainable_params))
+@dataclass
+class Exps:
+    datasets: List[DATASET] = field(
+        default_factory=lambda: [
+            DATASET.DG5, 
+            DATASET.PACS, 
+            DATASET.DDN
+        ]
+    )
+    models: List[MODEL] = field(
+        default_factory=lambda: [
+            MODEL.CRST_S,
+            MODEL.CRST_M,
+            MODEL.CVIT,
+        ]
+    )
+    strategies: List[RetrainStrategy] = field(
+        default_factory=lambda: [
+            Driftguard(),
+        ]
+    )
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
-    def record(self, cid:int) -> None:
-        dir_path = Path("exp") / self.name
-        os.makedirs(dir_path, exist_ok=True)
-        path = Path(dir_path) / f"c_{cid}.json"
-        with open(path, "w") as f:
-            json.dump(self.metrics, f, indent=4)
+    @property
+    def exps(self) -> List[Exp]:
+        exp_list = []
+        for dataset in self.datasets:
+            for model in self.models:
+                for strategy in self.strategies:
+                    exp_name = f"{dataset.name}-{model.value}-{strategy.name}"
+                    exp = Exp(
+                        name=exp_name,
+                        dataset=dataset,
+                        model=model,
+                        strategy=strategy,
+                        device=self.device,
+                    )
+                    exp_list.append(exp)
+        return exp_list
+

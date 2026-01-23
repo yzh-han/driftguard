@@ -97,6 +97,9 @@ def build_client(cid: int, cfg: LaunchConfig) -> FedClient:
     client = FedClient(args)
     return client
 
+#######################################
+# Main Launching Code
+#######################################
 def main() -> None:
     """Start the local data service, server, and clients."""
     cfg = LaunchConfig(

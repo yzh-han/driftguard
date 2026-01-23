@@ -13,41 +13,22 @@ from driftguard.federate.server.state import RetrainState
 
 logger = get_logger("retrain_strategy")
 
-@dataclass
-class RetrainContext:
-    """Runtime context required by a retraining strategy.
-
-    Attributes:
-        retrain_state: Mutable retrain state for remaining rounds and config.
-        group_state: Cluster grouping state for clients.
-        retrain_rounds: Default number of rounds for a new retraining session.
-        set_shared_params: Callback to update shared parameters.
-        set_gate_params: Callback to update gate parameters.
-    """
-
-    retrain_state: RetrainState
-    group_state: GroupState
-    retrain_rounds: int
-    set_shared_params: Callable[[Params], None]
-    set_gate_params: Callable[[Params], None]
-
-
 class RetrainStrategy(ABC):
     """Pluggable retraining strategy for trigger and aggregation behavior."""
+    
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        """Name of the retraining strategy."""
 
+    @abstractmethod
     def on_obs(
         self,
         obs_list: List[Observation],
         grp_state: GroupState,
     ) -> None:
-        """Handle uploaded observations before retraining decisions.
-
-        Args:
-            context: Runtime retrain context to mutate.
-            obs_list: Observations from all clients for the round.
-
-        Returns:
-            None.
+        """
+        Handle uploaded observations before retraining decisions.
         """
 
     @abstractmethod
@@ -59,15 +40,8 @@ class RetrainStrategy(ABC):
         grp_state: GroupState,
         param_state: FedParam,
     ) -> None:
-        """Handle a trigger round and mutate context.
-
-        Args:
-            context: Runtime retrain context to mutate.
-            obs_list: Observations from all clients for the round.
-            params_list: Parameters uploaded by all clients.
-
-        Returns:
-            None.
+        """
+        Handle retraining trigger and aggregation logic.
         """
 
 
@@ -77,6 +51,9 @@ class Driftguard(RetrainStrategy):
         self.thr_reliance = thr_reliance
         self.thr_group_acc = thr_group_acc
 
+    @property
+    def name(self) -> str:
+        return "driftguard"
     def on_obs(
         self,
         obs_list: List[Observation],

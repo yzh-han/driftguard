@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import torch.nn as nn
 from torch.utils.data import DataLoader
 
-from driftguard.exp import Exp
+from driftguard.recorder import Recorder
 from driftguard.federate.observation import Fp, Observation
 from driftguard.federate.params import FedParam, ParamType, Params
 from driftguard.model.dataset import ListDataset, get_inference_transform, get_train_transform
@@ -45,7 +45,7 @@ class FedClient:
         self.batch_size: int = args.batch_size
         self.model: nn.Module = args.trainer.model
         self._trainer: Trainer = args.trainer
-        self.exp = Exp(args.exp_name)
+        self.recorder = Recorder(args.exp_name)
     def run(self):
         """perform one round of client operations"""
         time_step = 1
@@ -63,7 +63,7 @@ class FedClient:
 
             # step 3. trigger retrain if needed
             obs = self.inference(samples) #
-            self.exp.update_acc(time_step, obs.accuracy)    
+            self.recorder.update_acc(time_step, obs.accuracy)    
 
             params = []
             while True:
@@ -75,7 +75,7 @@ class FedClient:
                     if rt_cfg.param_type:
                         FedParam.set(self.model, params, rt_cfg.param_type)
                         FedParam.freeze_exclude(self.model, ParamType._GATE)
-                        self.exp.update_cost(
+                        self.recorder.update_cost(
                             time_step, get_trainable_params(self.model)
                         )
                         self.train(samples)
@@ -89,9 +89,9 @@ class FedClient:
                 
                 self.train(samples)
                 params = FedParam.get(self.model, rt_cfg.param_type)
-                self.exp.update_cost(time_step, get_trainable_params(self.model))
+                self.recorder.update_cost(time_step, get_trainable_params(self.model))
             
-        self.exp.record(self.cid)
+        self.recorder.record(self.cid)
 
     def inference(self, samples: List[Tuple[bytes, int]]) -> Observation:
         loader = DataLoader(
