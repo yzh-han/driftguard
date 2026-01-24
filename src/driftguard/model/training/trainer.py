@@ -157,12 +157,15 @@ class Trainer:
         """Save the model state dict."""
         os.makedirs("cp", exist_ok=True)
         torch.save(self.model.state_dict(), f"cp/{self._cp_name}.pth")
+        logger.info(f"Saved model weights to cp/{self._cp_name}.pth")
+
     def load(self) -> None:
         """Load the model state dict."""
         os.makedirs("cp", exist_ok=True)
         self.model.load_state_dict(
             torch.load(f"cp/{self._cp_name}.pth", map_location=self.device)
         )
+        logger.info(f"Loaded model weights from cp/{self._cp_name}.pth")
 
     def inference(
         self, 
