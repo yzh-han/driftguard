@@ -527,6 +527,8 @@ def aggregate(
         else:
             params = aggregate_params(params_list)
         param_state.full = params
+    elif rt_cfg.param_type == ParamType.MOE:
+        param_state.full = aggregate_params(params_list)
     else:
         raise ValueError(f"Unknown param type: {rt_cfg.param_type}")
         
