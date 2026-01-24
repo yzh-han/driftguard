@@ -154,7 +154,8 @@ class GroupState:
         """
         # 0 计算距离矩阵
         D = Fp.pairwise_D(fps)  # 本轮30个
-        logger.debug(f"Distance matrix D:\n{D}")
+        logger.info(f"[Clustering Distance] {D.mean():.4f} ± {D.std():.4f}")
+        logger.info(f"Distance matrix D:\n{D}")
         # 1 聚类
         clu_raw = self._model.fit_predict(D)
         logger.debug(f"Cluster labels:\n{clu_raw}")

@@ -106,9 +106,9 @@ exps = Exps(
         # AveTrig(thr_acc=0.7),
         # PerCTrig(thr_acc=0.7),
         # MoEAve(thr_acc=0.7),
-        MoEPerC(thr_acc=0.7),
-        Cluster(thr_acc=0.7),
-        # Driftguard(thr_reliance=0.2, thr_group_acc=0.7)
+        # MoEPerC(thr_acc=0.7),
+        # Cluster(thr_acc=0.7),
+        Driftguard(thr_reliance=0.2, thr_group_acc=0.7)
     ],
     device = "cuda" if torch.cuda.is_available() else "cpu",
 ).exps
@@ -134,8 +134,8 @@ def main() -> None:
             rt_round=2, # communication rounds <--------------------
             strategy= exp.strategy,
             cluster_thr = 0.1,
-            data_port=12003, # <--------------------
-            server_port=12004 # <--------------------
+            data_port=12000, # <--------------------
+            server_port=12001 # <--------------------
         )
 
         event_args = DriftEventArgs(
