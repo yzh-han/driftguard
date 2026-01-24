@@ -40,7 +40,7 @@ class FedParam:
             freeze_layer(model, include_names=["local"], exclude=True)
         elif param_type == ParamType.LOCAL:
             freeze_layer(model, include_names=["local"], exclude= True)
-        elif param_type == ParamType.FULL or param_type == ParamType.CLUSTER:
+        elif param_type == ParamType.FULL or param_type == ParamType.CLUSTER or param_type == ParamType.MOE:
             pass
         elif param_type == ParamType._GATE:
             freeze_layer(model, include_names=["gate"], exclude= True)
