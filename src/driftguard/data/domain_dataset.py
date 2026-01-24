@@ -68,7 +68,12 @@ class DomainDataset:
         self.buffer: dict[str, deque[tuple[Path, int]]] \
             = {domain: deque(entries) for domain, entries in domain_to_files.items()}
         """Mapping of domain -> deque of (path, label idx)."""
-
+        logger.info(f"DomainDataset buffer sizes: " +
+            ", ".join(
+                f"{domain}: {len(entries)}"
+                for domain, entries in self.buffer.items()
+            )
+        )
     # sample number of samples based on domain probabilities
     def get(self, n: int, distribution: list[float]) -> list[tuple[bytes, int]]:
         assert len(distribution) == len(self.domains), (
