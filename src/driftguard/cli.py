@@ -116,6 +116,7 @@ exps = Exps(
 def main() -> None:
     """Start the local data service, server, and clients."""
     for exp in exps:
+        print("\n\n")
         logger.info(f"[Experiment]: {exp.name}, Dataset: {exp.dataset.name}, Model: {exp.model.value}, Strategy: {exp.strategy.name}")
         cfg = LaunchConfig(
             exp_name=exp.name,
