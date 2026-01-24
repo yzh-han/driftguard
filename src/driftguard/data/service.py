@@ -87,12 +87,12 @@ class DataService:
             samples = self.dataset.get(
                 self.sample_size, self.client_states.get_distribution(cid)
             )
-            logger.info(
-                "[get_data] cid: %s\ttime_step: %s\tdistribution: %s",
-                cid,
-                time_step,
-                self.client_states.get_distribution(cid),
-            )
+            # logger.info(
+            #     "[get_data] cid: %s\ttime_step: %s\tdistribution: %s",
+            #     cid,
+            #     time_step,
+            #     self.client_states.get_distribution(cid),
+            # )
             return samples
         except Exception:
             logger.exception(
