@@ -76,21 +76,29 @@ class DataService:
         """
         # args: (cid, time_step) in this minimal RPC contract.
         cid, time_step = args
+        try:
+            if self._time_step != time_step:
+                # Advance all client states to the new time step.
+                self._time_step = time_step
+                while self._events and self._events[0].time_step <= time_step:
+                    event = self._events.popleft()
+                    self.client_states.update(event)
 
-        if self._time_step != time_step:
-            # Advance all client states to the new time step.
-            self._time_step = time_step
-            while self._events and self._events[0].time_step <= time_step:
-                event = self._events.popleft()
-                self.client_states.update(event)
-
-        samples = self.dataset.get(
-            self.sample_size, self.client_states.get_distribution(cid)
-        )
-        logger.info(
-            f"[get_data] cid: {cid}\ttime_step: {time_step}\tdistribution: {self.client_states.get_distribution(cid)}"
-        )
-        return samples
+            samples = self.dataset.get(
+                self.sample_size, self.client_states.get_distribution(cid)
+            )
+            logger.info(
+                "[get_data] cid: %s\ttime_step: %s\tdistribution: %s",
+                cid,
+                time_step,
+                self.client_states.get_distribution(cid),
+            )
+            return samples
+        except Exception:
+            logger.exception(
+                "get_data failed (cid=%s, time_step=%s).", cid, time_step
+            )
+            raise
 
     def stop(self) -> bool:
         """Shutdown the XML-RPC server if attached.
