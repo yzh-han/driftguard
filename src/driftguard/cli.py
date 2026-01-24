@@ -92,14 +92,14 @@ def build_client(cid: int, cfg: LaunchConfig) -> FedClient:
 #######################################
 exps = Exps(
     datasets=[
-        DATASET.DG5, 
-        # DATASET.PACS, 
+        # DATASET.DG5, 
+        DATASET.PACS, 
         # DATASET.DDN
     ],
     models=[
-        MODEL.CRST_S, 
+        # MODEL.CRST_S, 
         # MODEL.CRST_M, 
-        # MODEL.CVIT
+        MODEL.CVIT
     ],
     strategies=[
         Never(),
@@ -191,6 +191,8 @@ def main() -> None:
         fed_server.shutdown()
         data_server.shutdown()
         logger.info("Launch finished.")
+
+        sleep(5)  # wait for ports to be released
 
 if __name__ == "__main__":
     main()
