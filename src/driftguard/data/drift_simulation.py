@@ -59,7 +59,7 @@ class ClientState:
             event: DriftEvent instance.
         """
         for cid in event.clients:
-            logger.debug(
+            logger.info(
                 f" [Drift] cid: {cid}, time_step: {event.time_step}, old: {self.c_to_dist[cid]}"
             )
             dest = self.c_to_dest[cid] = (
@@ -82,7 +82,7 @@ class ClientState:
                     dist[d] = (
                         dist[d] * remain_other / total_other if d != dest else dest_prob
                     )
-            logger.debug(f" [Drift] cid: {cid}, time_step: {event.time_step}, new: {self.c_to_dist[cid]}")
+            logger.info(f" [Drift] cid: {cid}, time_step: {event.time_step}, new: {self.c_to_dist[cid]}")
             assert abs(sum(dist) - 1.0) < 1e-6, "Probabilities must sum to 1.0"
 
     def get_distribution(self, cid: int) -> list[float]:

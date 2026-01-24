@@ -102,7 +102,7 @@ exps = Exps(
         # MODEL.CVIT
     ],
     strategies=[
-        Never(),
+        # Never(),
         AveTrig(thr_acc=0.7),
         PerCTrig(thr_acc=0.7),
         MoEAve(thr_acc=0.7),
@@ -191,9 +191,10 @@ def main() -> None:
 
         fed_server.shutdown()
         data_server.shutdown()
+
         logger.info("Launch finished.")
 
-        sleep(5)  # wait for ports to be released
+        sleep(10)  # wait for ports to be released
 
 if __name__ == "__main__":
     main()
