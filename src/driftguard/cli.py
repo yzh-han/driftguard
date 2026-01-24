@@ -93,16 +93,16 @@ def build_client(cid: int, cfg: LaunchConfig) -> FedClient:
 exps = Exps(
     datasets=[
         DATASET.DG5, 
-        # DATASET.PACS, 
-        # DATASET.DDN
+        DATASET.PACS, 
+        DATASET.DDN
     ],
     models=[
         MODEL.CRST_S, 
-        # MODEL.CRST_M, 
-        # MODEL.CVIT
+        MODEL.CRST_M, 
+        MODEL.CVIT
     ],
     strategies=[
-        # Never(),
+        Never(),
         # AveTrig(thr_acc=0.7),
         # PerCTrig(thr_acc=0.7),
         # MoEAve(thr_acc=0.7),
@@ -124,16 +124,16 @@ def main() -> None:
             sample_size_per_step = 30,
             dataset = exp.dataset,
             # client
-            total_steps = 10,
+            total_steps = 30, # <--------------------
             batch_size = 8,
             num_clients=20,
             model = exp.model,
             device = exp.device,
-            epochs=1, # <--------------------
+            epochs=20, # <--------------------
             # server
-            rt_round=2, # communication rounds <--------------------
+            rt_round=5, # communication rounds <--------------------
             strategy= exp.strategy,
-            cluster_thr = 0.2,
+            cluster_thr = 0.3,  # <--------------------
             data_port=12001, # <--------------------
             server_port=12002 # <--------------------
         )

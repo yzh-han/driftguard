@@ -449,7 +449,7 @@ class Driftguard(RetrainStrategy):
         group_accs = Observation.group_ave_acc(obs_list, grp_state.groups)
         grps = [g for g, acc in group_accs if acc < self.thr_group_acc]
 
-        logger.info(f"Reliance: {reliance}, Group Accuracies: {group_accs}")
+        logger.info(f"Reliance: {reliance:.2f}")
 
 
         if rt_state.stage == RetrainState.Stage.IDLE:
