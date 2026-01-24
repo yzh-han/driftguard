@@ -125,7 +125,7 @@ def main() -> None:
             # client
             total_steps = 20,
             batch_size = 8,
-            num_clients=30,
+            num_clients=20,
             model = exp.model,
             device = exp.device,
             epochs=3, # <--------------------
