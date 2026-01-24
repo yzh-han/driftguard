@@ -124,14 +124,14 @@ def main() -> None:
             sample_size_per_step = 30,
             dataset = exp.dataset,
             # client
-            total_steps = 20,
+            total_steps = 30,
             batch_size = 8,
-            num_clients=20,
+            num_clients=30,
             model = exp.model,
             device = exp.device,
-            epochs=3, # <--------------------
+            epochs=1, # <--------------------
             # server
-            rt_round=3, # communication rounds <--------------------
+            rt_round=2, # communication rounds <--------------------
             strategy= exp.strategy,
         )
 

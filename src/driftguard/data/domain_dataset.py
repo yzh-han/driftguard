@@ -1,7 +1,6 @@
 """Domain-level dataset reader backed by precomputed metadata."""
 
 import json
-from collections import deque
 from collections.abc import Callable
 from pathlib import Path
 import random
@@ -65,9 +64,9 @@ class DomainDataset:
             # Shuffle entries for randomness
             self.rng.shuffle(entries)
 
-        self.buffer: dict[str, deque[tuple[Path, int]]] \
-            = {domain: deque(entries) for domain, entries in domain_to_files.items()}
-        """Mapping of domain -> deque of (path, label idx)."""
+        self.buffer: dict[str, list[tuple[Path, int]]] \
+            = {domain: list(entries) for domain, entries in domain_to_files.items()}
+        """Mapping of domain -> list of (path, label idx)."""
         logger.info(f"DomainDataset buffer sizes: " +
             ", ".join(
                 f"{domain}: {len(entries)}"
@@ -97,13 +96,11 @@ class DomainDataset:
         if domain_idx >= len(self.domains):
             raise ValueError(f"Unknown domain: {domain_idx}")
         domain = self.domains[domain_idx]
-        # buffer of (path, label_idx)
-        entries: deque[tuple[Path, int]] = self.buffer[domain]
+        entries = self.buffer[domain]
         if not entries:
-            logger.warning(f"No samples available for domain: {domain}")
             raise ValueError(f"No samples available for domain: {domain}")
         
-        path, label_idx = entries.popleft()
+        path, label_idx = self.rng.choice(entries)  # 随机采样 with replacement <-------
         b_image = path.read_bytes()
         if self.transform:
             b_image = self.transform(b_image)
