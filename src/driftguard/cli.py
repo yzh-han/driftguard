@@ -137,8 +137,8 @@ def main() -> None:
             rt_round=5, # communication rounds <--------------------
             strategy= exp.strategy,
             cluster_thr = 0.3,  # <--------------------
-            data_port=12103, # <--------------------
-            server_port=12104 # <--------------------
+            data_port=12201, # <--------------------
+            server_port=12202 # <--------------------
         )
 
         event_args = DriftEventArgs(
