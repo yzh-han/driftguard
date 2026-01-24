@@ -29,6 +29,7 @@ class FedClientArgs:
     img_size: int = 28 # 28, 224 ,224
 
     exp_name: str = "exp"
+    exp_root: str = "exp"
 
 class FedClient:
     """client"""
@@ -46,7 +47,7 @@ class FedClient:
         self.model: nn.Module = args.trainer.model
         self._trainer: Trainer = args.trainer
         self._buffer: List =[]
-        self.recorder = Recorder(args.exp_name)
+        self.recorder = Recorder(args.exp_name, args.exp_root)
 
     def run(self):
         """perform one round of client operations"""

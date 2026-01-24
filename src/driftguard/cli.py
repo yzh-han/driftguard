@@ -31,6 +31,7 @@ logger = get_logger("launch")
 @dataclass
 class LaunchConfig:
     """Configuration for the local federated launch."""
+    exp_root: str
     exp_name: str
 
     # data service
@@ -81,7 +82,8 @@ def build_client(cid: int, cfg: LaunchConfig) -> FedClient:
         total_steps=cfg.total_steps,
         batch_size=cfg.batch_size,
         img_size=cfg.dataset.img_size,
-        exp_name=cfg.exp_name
+        exp_name=cfg.exp_name,
+        exp_root=cfg.exp_root
     )
     client = FedClient(args)
     client._trainer.load()  # load pretrained weights
@@ -104,13 +106,13 @@ exps = Exps(
     strategies=[
         Never(),
         AveTrig(thr_acc=0.7),
-        # PerCTrig(thr_acc=0.7),
-        # MoEAve(thr_acc=0.7),
-        # MoEPerC(thr_acc=0.7),
+        PerCTrig(thr_acc=0.7),
+        MoEAve(thr_acc=0.7),
+        MoEPerC(thr_acc=0.7),
         Cluster(thr_acc=0.7),
         Driftguard(thr_reliance=0.2, thr_group_acc=0.7)
     ],
-    device = "cuda" if torch.cuda.is_available() else "cpu",
+    device = "cuda:1" if torch.cuda.is_available() else "cpu", # <--------------------
 ).exps
 
 def main() -> None:
@@ -119,6 +121,7 @@ def main() -> None:
         print("\n\n")
         logger.info(f"[Experiment]: {exp.name}, Dataset: {exp.dataset.name}, Model: {exp.model.value}, Strategy: {exp.strategy.name}")
         cfg = LaunchConfig(
+            exp_root="exp21",
             exp_name=exp.name,
             # data service
             sample_size_per_step = 30,

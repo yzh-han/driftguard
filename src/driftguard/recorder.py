@@ -8,6 +8,7 @@ import json
 @dataclass
 class Recorder:
     name: str
+    root: str = "exp"
 
     def __post_init__(self) -> None:
         self.metrics: Dict[str, List] = {
@@ -22,7 +23,7 @@ class Recorder:
         self.metrics["cost"].append((time_step, trainable_params, epochs))
 
     def record(self, cid:int) -> None:
-        dir_path = Path("exp") / self.name
+        dir_path = Path(self.root) / self.name
         os.makedirs(dir_path, exist_ok=True)
         path = Path(dir_path) / f"c_{cid}.json"
         with open(path, "w") as f:
