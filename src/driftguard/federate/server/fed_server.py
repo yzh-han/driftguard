@@ -97,7 +97,8 @@ class FedServer:
 
         def on_obs(obs_list: List[Observation], grp_state: GroupState, rt_state: RetrainState) -> None:
             self.rt_strategy.on_obs(obs_list, grp_state, rt_state)
-
+            logger.info(f"[Ave Acc] {sum(o.accuracy for o in obs_list)/len(obs_list):.4f}")
+            logger.info(f"[Groups] {Observation.group_ave_acc(obs_list, grp_state.groups)}")
         self._sync.await_upload_obs(cid, on_obs, obs, self.grp_state, self.rt_state)
         
         params, param_type = [], ParamType.NONE
@@ -118,8 +119,8 @@ class FedServer:
             grp_state: GroupState,
             param_state: FedParam,
         ) -> None:
-
             self.rt_strategy.on_trig(obs_list, params_list, rt_state, grp_state, param_state)
+            logger.info(f"[Retrain Trigger] rt_cfg: {rt_state.rt_cfg}")
 
         self._sync.await_trig(cid, on_trig, obs, params, self.rt_state, self.grp_state, self.param_state)
 

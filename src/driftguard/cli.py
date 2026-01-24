@@ -174,7 +174,7 @@ def main() -> None:
             ),
         )
 
-        sleep(5)  
+        sleep(3)  
 
         clients = [build_client(cid, cfg) for cid in range(cfg.num_clients)]
         threads = [

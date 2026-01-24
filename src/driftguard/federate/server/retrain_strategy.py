@@ -424,7 +424,7 @@ class Driftguard(RetrainStrategy):
         # AgglomerativeClustering requires at least 2 samples.
         if len(fps) >= 2:
             grp_state.update(fps)
-        logger.info(f"[Updated groups]: {grp_state.groups}")
+        # logger.info(f"[Updated groups]: {grp_state.groups}")
 
     def on_trig(
         self,
@@ -449,7 +449,7 @@ class Driftguard(RetrainStrategy):
         group_accs = Observation.group_ave_acc(obs_list, grp_state.groups)
         grps = [g for g, acc in group_accs if acc < self.thr_group_acc]
 
-        logger.debug(f"Reliance: {reliance}, Group Accuracies: {group_accs}")
+        logger.info(f"Reliance: {reliance}, Group Accuracies: {group_accs}")
 
 
         if rt_state.stage == RetrainState.Stage.IDLE:
