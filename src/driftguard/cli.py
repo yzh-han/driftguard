@@ -103,8 +103,8 @@ exps = Exps(
     ],
     strategies=[
         # Never(),
-        AveTrig(thr_acc=0.7),
-        PerCTrig(thr_acc=0.7),
+        # AveTrig(thr_acc=0.7),
+        # PerCTrig(thr_acc=0.7),
         MoEAve(thr_acc=0.7),
         MoEPerC(thr_acc=0.7),
         Cluster(thr_acc=0.7),
@@ -189,12 +189,13 @@ def main() -> None:
         for thread in threads:
             thread.join()
 
-        fed_server.shutdown()
-        data_server.shutdown()
+        # 强制关闭 socket，线程会自动退出
+        fed_server.server_close()
+        data_server.server_close()
 
         logger.info("Launch finished.")
 
-        sleep(10)  # wait for ports to be released
+        sleep(1)  # 短暂等待即可
 
 if __name__ == "__main__":
     main()

@@ -120,7 +120,7 @@ class FedServer:
             param_state: FedParam,
         ) -> None:
             self.rt_strategy.on_trig(obs_list, params_list, rt_state, grp_state, param_state)
-            logger.info(f"[Retrain Trigger] rt_cfg: {rt_state.rt_cfg}")
+            logger.info(f"[Retrain Trigger] rt_cfg: {rt_state.rt_cfg}, retrain: {rt_state.remain_round}")
 
         self._sync.await_trig(cid, on_trig, obs, params, self.rt_state, self.grp_state, self.param_state)
 
