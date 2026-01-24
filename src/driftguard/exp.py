@@ -58,7 +58,6 @@ class MODEL(Enum):
         """Build a Cvit model."""
         return get_cvit(num_classes)
 
-    
 @dataclass
 class Exp:
     name: str

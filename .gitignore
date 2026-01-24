@@ -1,5 +1,7 @@
 
-cp/exp/
+cp/
+exp/
+_buffer/
 
 *.ipynb
 *.md

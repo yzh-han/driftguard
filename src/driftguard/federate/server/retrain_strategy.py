@@ -21,6 +21,14 @@ class RetrainStrategy(ABC):
     @abstractmethod
     def name(self) -> str:
         """Name of the retraining strategy."""
+    @property
+    @abstractmethod
+    def data_port(self) -> int:
+        """Port for data service."""
+    @property
+    @abstractmethod
+    def server_port(self) -> int:
+        """Port for server service."""
 
     @abstractmethod
     def on_obs(
@@ -51,6 +59,12 @@ class Never(RetrainStrategy):
     @property
     def name(self) -> str:
         return "never"
+    @property
+    def data_port(self) -> int:
+        return 11001
+    @property
+    def server_port(self) -> int:
+        return 11002
     
     def on_obs(
         self,
@@ -78,6 +92,12 @@ class AveTrig(RetrainStrategy):
     @property
     def name(self) -> str:
         return "average"
+    @property
+    def data_port(self) -> int:
+        return 11101
+    @property
+    def server_port(self) -> int:
+        return 11102
     
     def on_obs(
         self,
@@ -138,6 +158,12 @@ class PerCTrig(RetrainStrategy):
     @property
     def name(self) -> str:
         return "per_client"
+    @property
+    def data_port(self) -> int:
+        return 11201
+    @property
+    def server_port(self) -> int:
+        return 11202
     
     def on_obs(
         self,
@@ -202,6 +228,12 @@ class MoEAve(RetrainStrategy):
     @property
     def name(self) -> str:
         return "moe_ave"
+    @property
+    def data_port(self) -> int:
+        return 11301
+    @property
+    def server_port(self) -> int:
+        return 11302
     
     def on_obs(
         self,
@@ -262,7 +294,13 @@ class MoEPerC(RetrainStrategy):
     @property
     def name(self) -> str:
         return "moe_perC"
-    
+    @property
+    def data_port(self) -> int:
+        return 11401
+    @property
+    def server_port(self) -> int:
+        return 11402
+
     def on_obs(
         self,
         obs_list: List[Observation],
@@ -329,7 +367,13 @@ class Cluster(RetrainStrategy):
     @property
     def name(self) -> str:
         return "cluster"
-    
+    @property
+    def data_port(self) -> int:
+        return 11501
+    @property
+    def server_port(self) -> int:
+        return 11502
+
     def on_obs(
         self,
         obs_list: List[Observation],
@@ -414,6 +458,13 @@ class Driftguard(RetrainStrategy):
     @property
     def name(self) -> str:
         return "driftguard"
+    @property
+    def data_port(self) -> int:
+        return 11601
+    @property
+    def server_port(self) -> int:
+        return 11602
+
     def on_obs(
         self,
         obs_list: List[Observation],

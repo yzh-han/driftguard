@@ -99,18 +99,18 @@ exps = Exps(
         DATASET.DDN
     ],
     models=[
-        MODEL.CRST_S, 
+        # MODEL.CRST_S, 
         MODEL.CRST_M, 
         MODEL.CVIT
     ],
     strategies=[
         Never(),
-        AveTrig(thr_acc=0.7),
-        PerCTrig(thr_acc=0.7),
-        MoEAve(thr_acc=0.7),
-        MoEPerC(thr_acc=0.7),
-        Cluster(thr_acc=0.7),
-        Driftguard(thr_reliance=0.2, thr_group_acc=0.7)
+        AveTrig(thr_acc=0.65),
+        PerCTrig(thr_acc=0.65),
+        MoEAve(thr_acc=0.65),
+        MoEPerC(thr_acc=0.65),
+        Cluster(thr_acc=0.65),
+        Driftguard(thr_reliance=0.2, thr_group_acc=0.65)
     ],
     device = "cuda:1" if torch.cuda.is_available() else "cpu", # <--------------------
 ).exps
@@ -137,8 +137,8 @@ def main() -> None:
             rt_round=5, # communication rounds <--------------------
             strategy= exp.strategy,
             cluster_thr = 0.3,  # <--------------------
-            data_port=12201, # <--------------------
-            server_port=12202 # <--------------------
+            data_port=exp.strategy.data_port, # <--------------------
+            server_port=exp.strategy.server_port # <--------------------
         )
 
         event_args = DriftEventArgs(
