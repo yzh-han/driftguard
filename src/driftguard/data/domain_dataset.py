@@ -9,6 +9,9 @@ from PIL import Image
 import io
 import torch
 from torchvision import transforms
+from driftguard import config
+
+logger = config.get_logger("data.domain_dataset")
 
 class DomainDataset:
     """Serve samples by domain using precomputed metadata.
@@ -71,8 +74,6 @@ class DomainDataset:
         assert len(distribution) == len(self.domains), (
             "Distribution length must match number of domains"
         )
-
-
         samples = self.rng.choices(
             range(len(distribution)), weights=distribution, k=n
         )
@@ -94,6 +95,7 @@ class DomainDataset:
         # buffer of (path, label_idx)
         entries: deque[tuple[Path, int]] = self.buffer[domain]
         if not entries:
+            logger.warning(f"No samples available for domain: {domain}")
             raise ValueError(f"No samples available for domain: {domain}")
         
         path, label_idx = entries.popleft()
