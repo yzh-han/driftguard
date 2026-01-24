@@ -133,7 +133,7 @@ def main() -> None:
             # server
             rt_round=2, # communication rounds <--------------------
             strategy= exp.strategy,
-            cluster_thr = 0.1,
+            cluster_thr = 0.2,
             data_port=12004, # <--------------------
             server_port=12005 # <--------------------
         )

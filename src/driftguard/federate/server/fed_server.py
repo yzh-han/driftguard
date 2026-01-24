@@ -98,7 +98,9 @@ class FedServer:
         def on_obs(obs_list: List[Observation], grp_state: GroupState, rt_state: RetrainState) -> None:
             self.rt_strategy.on_obs(obs_list, grp_state, rt_state)
             logger.info(f"[Ave Acc] {sum(o.accuracy for o in obs_list)/len(obs_list):.4f}")
-            logger.info(f"[Groups] {Observation.group_ave_acc(obs_list, grp_state.groups)}")
+            logger.info(
+                f"[Groups] {[f'{g}: {acc:.2f}' for g, acc in Observation.group_ave_acc(obs_list, grp_state.groups)]}"
+            )
         self._sync.await_upload_obs(cid, on_obs, obs, self.grp_state, self.rt_state)
         
         params, param_type = [], ParamType.NONE

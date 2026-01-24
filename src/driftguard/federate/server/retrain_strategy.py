@@ -528,7 +528,13 @@ def aggregate(
             params = aggregate_params(params_list)
         param_state.full = params
     elif rt_cfg.param_type == ParamType.MOE:
-        param_state.full = aggregate_params(params_list)
+        if sel_clients is not None:
+            params = aggregate_params(
+                [params_list[i] for i in range(len(params_list)) if i in sel_clients]
+            )
+        else:
+            params = aggregate_params(params_list)
+        param_state.full = params
     else:
         raise ValueError(f"Unknown param type: {rt_cfg.param_type}")
         
