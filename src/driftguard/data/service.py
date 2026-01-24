@@ -87,7 +87,7 @@ class DataService:
         samples = self.dataset.get(
             self.sample_size, self.client_states.get_distribution(cid)
         )
-        logger.debug(
+        logger.info(
             f"[get_data] cid: {cid}\ttime_step: {time_step}\tdistribution: {self.client_states.get_distribution(cid)}"
         )
         return samples
