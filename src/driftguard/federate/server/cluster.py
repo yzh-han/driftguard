@@ -105,7 +105,7 @@ class GroupState:
     def __init__(
         self, num_clients: int, args: ClusterArgs = ClusterArgs()
     ):
-        """Initialize clustering state.
+        """Initialize clustering state, with empty groups[].
 
         Args:
             thr: Distance threshold for clustering.
@@ -124,9 +124,7 @@ class GroupState:
             distance_threshold=args.thr,
         )
 
-        self.groups: List[Group] = [
-            
-        ]  # 初始单一组，包含所有客户端
+        self.groups: List[Group] = []
     @property
     def all_clients(self) -> List[int]:
         """Return a list of all client indices."""

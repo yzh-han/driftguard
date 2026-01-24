@@ -21,7 +21,7 @@ def freeze_layer(model: nn.Module, include_names: List[str] = [], exclude: bool 
             if any(n in name for n in include_names) or not include_names:
                 param.requires_grad = False
 
-    logger.info(
+    logger.debug(
         f"Frozen layers {'includes' if not exclude else 'excludes'} {include_names}"
     )
 
@@ -41,7 +41,7 @@ def unfreeze_layer(model: nn.Module, include_names: List[str] = [], exclude: boo
             if any(n in name for n in include_names) or not include_names:
                 param.requires_grad = True
 
-    logger.info(
+    logger.debug(
         f"Unfrozen layers {'includes' if not exclude else 'excludes'} '{include_names}'"
     )
 

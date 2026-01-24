@@ -6,6 +6,8 @@ from torchvision.transforms import transforms as T
 from PIL import Image
 import io
 
+l = [1,2,3]
+print(l[:-2])
 class ListDataset(Dataset):
     def __init__(self, samples: List[Tuple[bytes, int]], transform=None):
         """

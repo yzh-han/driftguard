@@ -16,6 +16,8 @@ class ParamType(Enum):
     SHARED = "shared"
     LOCAL = "local"
     FULL = "full"
+    CLUSTER = "cluster"
+    MOE = "moe"
     NONE = None
 
     _GATE = "gate"
@@ -38,7 +40,7 @@ class FedParam:
             freeze_layer(model, include_names=["local"], exclude=True)
         elif param_type == ParamType.LOCAL:
             freeze_layer(model, include_names=["local"], exclude= True)
-        elif param_type == ParamType.FULL:
+        elif param_type == ParamType.FULL or param_type == ParamType.CLUSTER:
             pass
         elif param_type == ParamType._GATE:
             freeze_layer(model, include_names=["gate"], exclude= True)
@@ -53,21 +55,21 @@ class FedParam:
 
     @staticmethod
     def set(model: nn.Module, params: Params, param_type: ParamType) -> None:
-        if param_type == ParamType.SHARED:
+        if param_type == ParamType.SHARED or param_type == ParamType.MOE:
             set_params(model, params, names=["local", "gate"], exclude=True)
         elif param_type == ParamType.LOCAL:
             set_params(model, params, names=["local"])
-        elif param_type == ParamType.FULL:
+        elif param_type == ParamType.FULL or param_type == ParamType.CLUSTER:
             set_params(model, params)
         else:
             raise ValueError(f"Unknown param_type: {param_type}")
     @staticmethod
     def get(model: nn.Module, param_type: ParamType) -> Params:
-        if param_type == ParamType.SHARED:
+        if param_type == ParamType.SHARED or param_type == ParamType.MOE:
             return get_params(model, names=["local", "gate"], exclude=True)
         elif param_type == ParamType.LOCAL:
             return get_params(model, names=["local"])
-        elif param_type == ParamType.FULL:
+        elif param_type == ParamType.FULL or param_type == ParamType.CLUSTER:
             return get_params(model)
         else:
             raise ValueError(f"Unknown param_type: {param_type}")

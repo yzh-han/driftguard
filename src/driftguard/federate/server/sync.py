@@ -43,7 +43,12 @@ class ServerSyncCoordinator:
                 self._step_cv.wait()
 
     def await_upload_obs(
-        self, cid: int, on_obs: Callable, obs: Observation, grp_state: GroupState
+        self,
+        cid: int,
+        on_obs: Callable,
+        obs: Observation,
+        grp_state: GroupState,
+        rt_state: RetrainState,
     ) -> None:
         """
         Await acknowledgment for uploading observations from a client.
@@ -57,7 +62,7 @@ class ServerSyncCoordinator:
                 obs_list = [
                     self.req_state.obs[c].payload for c in self.req_state.obs.keys()
                 ]
-                on_obs(obs_list, grp_state) # update cluster etc.
+                on_obs(obs_list, grp_state, rt_state) # update cluster etc.
                 
                 self.req_state.reset()
                 self._obs_cv.notify_all()

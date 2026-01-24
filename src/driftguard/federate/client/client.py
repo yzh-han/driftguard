@@ -45,7 +45,9 @@ class FedClient:
         self.batch_size: int = args.batch_size
         self.model: nn.Module = args.trainer.model
         self._trainer: Trainer = args.trainer
+        self._buffer: List =[]
         self.recorder = Recorder(args.exp_name)
+
     def run(self):
         """perform one round of client operations"""
         time_step = 1
@@ -58,7 +60,7 @@ class FedClient:
             # step 2. upload observations
             obs = self.inference(samples)
             params, param_type = self.s_proxy.req_upload_obs((self.cid, obs))
-            if params:
+            if params and param_type:
                 FedParam.set(self.model, params, param_type)
 
             # step 3. trigger retrain if needed
@@ -68,29 +70,34 @@ class FedClient:
             params = []
             while True:
                 params, rt_cfg = self.s_proxy.req_trig((self.cid, obs, params))
+                train_sets, val_sets = [*self._buffer, *samples[:-10]], samples[-10:]
+
                 FedParam.unfreeze(self.model)
 
-                if not rt_cfg.trigger or self.cid not in rt_cfg.selection:
-                    # 训练结束set参数, 更新Gate
-                    if rt_cfg.param_type:
+                # 1. stop
+                if not rt_cfg.trigger:
+                    if self.cid in rt_cfg.selection and rt_cfg.param_type:
                         FedParam.set(self.model, params, rt_cfg.param_type)
+                        # 训练gate
                         FedParam.freeze_exclude(self.model, ParamType._GATE)
-                        self.recorder.update_cost(
-                            time_step, get_trainable_params(self.model)
-                        )
-                        self.train(samples)
+                        self.train(train_sets, val_sets, time_step)
+                    break
+                # 2. not selected
+                if self.cid not in rt_cfg.selection:
                     continue
-
+                # 3. 进入训练, 可以没有参数 e.g. 新组 使用原有参数
                 if params: 
                     FedParam.set(self.model, params, rt_cfg.param_type)
                 
                 FedParam.freeze_exclude(self.model, rt_cfg.param_type)
                 FedParam.unfreeze(self.model, ["gate"])
                 
-                self.train(samples)
+                self.train(train_sets, val_sets, time_step)
+
                 params = FedParam.get(self.model, rt_cfg.param_type)
-                self.recorder.update_cost(time_step, get_trainable_params(self.model))
-            
+                
+            self._buffer = samples[-10:]  
+
         self.recorder.record(self.cid)
 
     def inference(self, samples: List[Tuple[bytes, int]]) -> Observation:
@@ -111,10 +118,30 @@ class FedClient:
         )
         return obs
     
-    def train(self, samples: List[Tuple[bytes, int]]) -> None:
-        loader = DataLoader(
-            ListDataset(samples, get_train_transform(self.img_size)),
-            batch_size=self.batch_size,
-            shuffle=True,
+    def train(self, train_sets: List[Tuple[bytes, int]], val_sets: List[Tuple[bytes, int]], time_step: int) -> None:
+        
+        train_loader1, train_loader2, val_loader = (
+            DataLoader(
+                ListDataset(train_sets, get_inference_transform(self.img_size)),
+                batch_size=self.batch_size,
+                shuffle=True,
+            ),
+            DataLoader(
+                ListDataset(train_sets, get_train_transform(self.img_size)),
+                batch_size=self.batch_size,
+                shuffle=True,
+            ),
+            DataLoader(
+                ListDataset(val_sets, get_inference_transform(self.img_size)),
+                batch_size=self.batch_size,
+                shuffle=False,
+            ),
         )
-        self._trainer.fit(loader)
+
+        # 2 stage train, origin -> 增强
+        history_1 = self._trainer.fit(train_loader1, val_loader)
+        history_2 = self._trainer.fit(train_loader2, val_loader)
+
+        self.recorder.update_cost(
+            time_step, get_trainable_params(self.model), len(history_1) + len(history_2)
+        )

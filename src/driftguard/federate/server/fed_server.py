@@ -30,7 +30,7 @@ class FedServerArgs:
 
     data_service_proxy: DataServiceProxy
     num_clients: int
-    rt_round: int
+    rt_round: int # default communication rounds
     retrain_strategy: RetrainStrategy
     clu_args: ClusterArgs
     
@@ -43,7 +43,7 @@ class FedServer:
         # STATES
         self.param_state: FedParam = FedParam([],[],[])
         self.grp_state: GroupState = GroupState(args.num_clients, args.clu_args)
-        self.rt_state: RetrainState = RetrainState(rt_round=args.rt_round)
+        self.rt_state: RetrainState = RetrainState(_rt_round=args.rt_round)
 
         self.rt_strategy: RetrainStrategy = args.retrain_strategy
         
@@ -84,24 +84,28 @@ class FedServer:
         # perform once
         def on_step():
             self._time_step += 1
-            logger.info(f"Time step advanced to {self._time_step}")
+            logger.info(f"[Time step] advanced to [{self._time_step}]")
 
         self._sync.await_adv_step(cid, on_step)
         return (self._time_step,)
 
     @server_func
     def req_upload_obs(self, args: Tuple[int, Observation]) -> Tuple[Params, ParamType]:
+        """Return group parameters, or empty if no groups."""
         cid, obs = args
         # store observation
 
-        def on_obs(obs_list: List[Observation], grp_state: GroupState) -> None:
-            logger.info(f"Observations uploaded from client {cid}")
-            self.rt_strategy.on_obs(obs_list, grp_state)
+        def on_obs(obs_list: List[Observation], grp_state: GroupState, rt_state: RetrainState) -> None:
+            self.rt_strategy.on_obs(obs_list, grp_state, rt_state)
 
-        self._sync.await_upload_obs(cid, on_obs, obs, self.grp_state)
+        self._sync.await_upload_obs(cid, on_obs, obs, self.grp_state, self.rt_state)
+        
+        params, param_type = [], ParamType.NONE
+        if self.grp_state.groups: # has groups
+            params = self.grp_state.get_group(cid).params
+            param_type = ParamType.CLUSTER if self.rt_state.is_cluster else ParamType.LOCAL
 
-        params = self.grp_state.get_group(cid).params
-        return params, ParamType.LOCAL
+        return params, param_type
 
     @server_func
     def req_trig(self, args: Tuple[int, Observation, Params]) -> Tuple[Params, RetrainConfig]:
@@ -122,9 +126,18 @@ class FedServer:
         params = []
         if self.rt_state.rt_cfg.param_type == ParamType.SHARED:
             params = self.param_state.shared
-        elif self.rt_state.rt_cfg.param_type == ParamType.LOCAL:
+        elif (
+            self.rt_state.rt_cfg.param_type == ParamType.LOCAL
+            or self.rt_state.rt_cfg.param_type == ParamType.CLUSTER
+        ):
             params = self.grp_state.get_group(cid).params
-
+        elif (
+            self.rt_state.rt_cfg.param_type == ParamType.FULL
+            or self.rt_state.rt_cfg.param_type == ParamType.MOE
+        ):
+            params = self.param_state.full
+        else:
+            pass
         return params, self.rt_state.rt_cfg  # placeholder
  
 def start_fed_server(

@@ -72,16 +72,22 @@ class RetrainState:
             ONGOING = 1
             COMPLETED = 2
 
-    rt_round: int = 0  # config
+    _rt_round: int  # config
     def __post_init__(self):
         self.remain_round: int = 0  # remain
         self.rt_cfg: RetrainConfig = RetrainConfig(False, [], ParamType.FULL)
-
+        self.is_cluster: bool = False
     @property
     def stage(self) -> Stage:
-        if self.remain_round <= 0 and not self.rt_cfg.trigger:
-            return self.Stage.IDLE
-        elif self.remain_round > 0:
+        if self.remain_round > 0:
             return self.Stage.ONGOING
         else:
-            return self.Stage.COMPLETED
+            if self.rt_cfg.trigger:
+                # completed: remain 0 but trigger True
+                return self.Stage.COMPLETED
+            else:
+                # idle: remain 0 and not trigger
+                return self.Stage.IDLE
+            
+        
+            
