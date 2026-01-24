@@ -82,8 +82,8 @@ class ClientState:
                         dist[d] * remain_other / total_other if d != dest else dest_prob
                     )
             logger.info(f" [Drift] cid: {cid}, time_step: {event.time_step}" \
-                        f"old: {[f'{f:.4f}' for f in _old_dist]}, -> "\
-                        f"new: {[f'{f:.4f}' for f in self.c_to_dist[cid]]}")
+                        f"old: {[f'{f:.2f}' for f in _old_dist]}, -> "\
+                        f"new: {[f'{f:.2f}' for f in self.c_to_dist[cid]]}")
             assert abs(sum(dist) - 1.0) < 1e-6, "Probabilities must sum to 1.0"
 
     def get_distribution(self, cid: int) -> list[float]:
