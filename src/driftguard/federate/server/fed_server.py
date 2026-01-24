@@ -145,6 +145,7 @@ def start_fed_server(
     node: Node, args: FedServerArgs
 ) -> Tuple[ThreadedXMLRPCServer, FedServer]:
     """Start the federated server in a background thread."""
+    ThreadedXMLRPCServer.allow_reuse_address = True
     server = ThreadedXMLRPCServer((node.host, node.port), logRequests=False, allow_none=True)
     service = FedServer(args)
     service._attach_server(server)

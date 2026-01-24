@@ -127,6 +127,7 @@ def start_data_service(
     node: Node, args: DataServiceArgs
 ) -> Tuple[SimpleXMLRPCServer, DataService]:
     """Start the data service server in a background thread."""
+    SimpleXMLRPCServer.allow_reuse_address = True
     server = SimpleXMLRPCServer((node.host, node.port), allow_none=True, logRequests=False)
     service = DataService(args)
     service._attach_server(server)
