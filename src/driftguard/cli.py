@@ -92,14 +92,14 @@ def build_client(cid: int, cfg: LaunchConfig) -> FedClient:
 #######################################
 exps = Exps(
     datasets=[
-        # DATASET.DG5, 
-        DATASET.PACS, 
+        DATASET.DG5, 
+        # DATASET.PACS, 
         # DATASET.DDN
     ],
     models=[
-        # MODEL.CRST_S, 
+        MODEL.CRST_S, 
         # MODEL.CRST_M, 
-        MODEL.CVIT
+        # MODEL.CVIT
     ],
     strategies=[
         Never(),
@@ -124,9 +124,9 @@ def main() -> None:
             sample_size_per_step = 30,
             dataset = exp.dataset,
             # client
-            total_steps = 30,
+            total_steps = 10,
             batch_size = 8,
-            num_clients=30,
+            num_clients=20,
             model = exp.model,
             device = exp.device,
             epochs=1, # <--------------------
