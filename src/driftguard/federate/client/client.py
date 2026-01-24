@@ -76,7 +76,8 @@ class FedClient:
 
                 # 1. stop
                 if not rt_cfg.trigger:
-                    if self.cid in rt_cfg.selection and rt_cfg.param_type:
+                    if self.cid in rt_cfg.selection and rt_cfg.param_type and params:
+                        logger.info(f"[Retrain Stop] cid: {self.cid}, time_step: {time_step}, rt_cfg: {rt_cfg}")
                         FedParam.set(self.model, params, rt_cfg.param_type)
                         # 训练gate
                         FedParam.freeze_exclude(self.model, ParamType._GATE)
