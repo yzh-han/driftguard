@@ -106,7 +106,7 @@ exps = Exps(
         # AveTrig(thr_acc=0.7),
         PerCTrig(thr_acc=0.7),
         MoEAve(thr_acc=0.7),
-        # MoEPerC(thr_acc=0.7),
+        MoEPerC(thr_acc=0.7),
         # Cluster(thr_acc=0.7),
         # Driftguard(thr_reliance=0.2, thr_group_acc=0.7)
     ],
