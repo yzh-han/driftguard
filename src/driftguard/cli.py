@@ -182,6 +182,7 @@ def main() -> None:
             for client in clients
         ]
 
+        sleep(2)  # wait for all clients to be ready
         for thread in threads:
             thread.start()
         for thread in threads:
