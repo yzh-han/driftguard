@@ -63,11 +63,11 @@ class Fp:
             Squared weighted distance between fingerprints.
         """
         w = (a.w * b.w) ** 0.5
+        diff = a.label_gate_norm - b.label_gate_norm
+        weights = np.broadcast_to(w[:, None, None], diff.shape)
+        dist = np.sqrt(np.average(diff**2, weights=weights))
 
-        dist = ((a.label_gate_norm - b.label_gate_norm) ** 2) * w[:, None, None]
-        dist = dist.sum()  # / w.sum()
-
-        return dist
+        return float(dist)
 
     @staticmethod
     def pairwise_D(fps_list: List[Fp]) -> np.ndarray:

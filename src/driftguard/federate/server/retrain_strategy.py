@@ -585,7 +585,7 @@ def aggregate(
             )
         else:
             params = aggregate_params(params_list)
-        param_state.full = params
+        param_state.moe_shared = params
     else:
         raise ValueError(f"Unknown param type: {rt_cfg.param_type}")
         

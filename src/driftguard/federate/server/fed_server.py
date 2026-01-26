@@ -41,7 +41,7 @@ class FedServer:
         args: FedServerArgs,
     ):
         # STATES
-        self.param_state: FedParam = FedParam([],[],[])
+        self.param_state: FedParam = FedParam()
         self.grp_state: GroupState = GroupState(args.num_clients, args.clu_args)
         self.rt_state: RetrainState = RetrainState(_rt_round=args.rt_round)
 
@@ -127,7 +127,12 @@ class FedServer:
         self._sync.await_trig(cid, on_trig, obs, params, self.rt_state, self.grp_state, self.param_state)
 
         params = []
-        if self.rt_state.rt_cfg.param_type == ParamType.SHARED:
+        # 第一轮全部重训
+        if self._time_step == 1:
+            self.rt_state.rt_cfg = RetrainConfig(True, self.grp_state.all_clients, ParamType.SHARED)
+            self.rt_state.remain_round = self.rt_state._rt_round
+
+        elif self.rt_state.rt_cfg.param_type == ParamType.SHARED:
             params = self.param_state.shared
         elif (
             self.rt_state.rt_cfg.param_type == ParamType.LOCAL
@@ -136,9 +141,10 @@ class FedServer:
             params = self.grp_state.get_group(cid).params
         elif (
             self.rt_state.rt_cfg.param_type == ParamType.FULL
-            or self.rt_state.rt_cfg.param_type == ParamType.MOE
         ):
             params = self.param_state.full
+        elif self.rt_state.rt_cfg.param_type == ParamType.MOE:
+            params = self.param_state.moe_shared
         else:
             pass
         return params, self.rt_state.rt_cfg  # placeholder

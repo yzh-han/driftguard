@@ -25,9 +25,10 @@ class ParamType(Enum):
 
 @dataclass
 class FedParam:
-    shared: Params
-    local: Params 
-    full: Params
+    shared: Params = []
+    local: Params = []
+    full: Params = []
+    moe_shared: Params = []
     
     def set_all(self, model: nn.Module) -> None:
         """Set all parameters to the model."""
