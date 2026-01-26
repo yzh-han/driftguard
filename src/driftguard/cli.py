@@ -121,7 +121,7 @@ def main() -> None:
         print("\n\n")
         logger.info(f"[Experiment]: {exp.name}, Dataset: {exp.dataset.name}, Model: {exp.model.value}, Strategy: {exp.strategy.name}")
         cfg = LaunchConfig(
-            exp_root="exp_full_try1",
+            exp_root="exp/exp_full_try1",
             exp_name=exp.name,
             # data service
             sample_size_per_step = 30,
