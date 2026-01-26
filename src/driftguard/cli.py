@@ -104,15 +104,15 @@ exps = Exps(
         MODEL.CVIT
     ],
     strategies=[
-        Never(),
-        AveTrig(thr_acc=0.65),
-        PerCTrig(thr_acc=0.65),
-        MoEAve(thr_acc=0.65),
-        MoEPerC(thr_acc=0.65),
-        Cluster(thr_acc=0.65),
+        # Never(),
+        # AveTrig(thr_acc=0.65),
+        # PerCTrig(thr_acc=0.65),
+        # MoEAve(thr_acc=0.65),
+        # MoEPerC(thr_acc=0.65),
+        # Cluster(thr_acc=0.65),
         Driftguard(thr_reliance=0.2, thr_group_acc=0.65)
     ],
-    device = "cuda:1" if torch.cuda.is_available() else "cpu", # <--------------------
+    device = "cuda:0" if torch.cuda.is_available() else "cpu", # <--------------------
 ).exps
 
 def main() -> None:

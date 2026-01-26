@@ -37,7 +37,7 @@ class FedParam:
     @staticmethod
     def freeze_exclude(model: nn.Module, param_type: ParamType) -> None:
         if param_type == ParamType.SHARED:
-            freeze_layer(model, include_names=["local"], exclude=True)
+            freeze_layer(model, include_names=["local"])
         elif param_type == ParamType.LOCAL:
             freeze_layer(model, include_names=["local"], exclude= True)
         elif param_type == ParamType.FULL or param_type == ParamType.CLUSTER or param_type == ParamType.MOE:
