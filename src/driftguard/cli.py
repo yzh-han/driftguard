@@ -94,7 +94,7 @@ def build_client(cid: int, cfg: LaunchConfig) -> FedClient:
 #######################################
 exps = Exps(
     datasets=[
-        DATASET.DG5, 
+        # DATASET.DG5, 
         DATASET.PACS, 
         DATASET.DDN
     ],
