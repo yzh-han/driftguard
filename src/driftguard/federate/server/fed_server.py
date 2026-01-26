@@ -129,7 +129,7 @@ class FedServer:
         params = []
         # 第一轮全部重训
         if self._time_step == 1:
-            self.rt_state.rt_cfg = RetrainConfig(True, self.grp_state.all_clients, ParamType.SHARED)
+            self.rt_state.rt_cfg = RetrainConfig(True, self.grp_state.all_clients, ParamType.FULL)
             self.rt_state.remain_round = self.rt_state._rt_round
 
         elif self.rt_state.rt_cfg.param_type == ParamType.SHARED:
