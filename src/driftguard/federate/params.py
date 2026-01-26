@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, TypeAlias
 import numpy as np
@@ -25,10 +25,10 @@ class ParamType(Enum):
 
 @dataclass
 class FedParam:
-    shared: Params = []
-    local: Params = []
-    full: Params = []
-    moe_shared: Params = []
+    shared: Params = field(default_factory=list)
+    local: Params = field(default_factory=list)
+    full: Params = field(default_factory=list)
+    moe_shared: Params = field(default_factory=list)
     
     def set_all(self, model: nn.Module) -> None:
         """Set all parameters to the model."""
