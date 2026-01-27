@@ -128,8 +128,9 @@ class FedServer:
 
         params = []
         # 第一轮全部重训
-        if self._time_step == 1:
-            self.rt_state.rt_cfg = RetrainConfig(True, self.grp_state.all_clients, ParamType.FULL)
+        if self._time_step == 1 and self.rt_state.rt_cfg.param_type != ParamType.FULL:
+            self.rt_state.rt_cfg.selection = self.grp_state.all_clients
+            self.rt_state.rt_cfg.param_type = ParamType.FULL
 
         elif self.rt_state.rt_cfg.param_type == ParamType.SHARED:
             params = self.param_state.shared
