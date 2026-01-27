@@ -133,7 +133,11 @@ class FedServer:
         #     self.rt_state.rt_cfg.param_type = ParamType.FULL
 
         if self.rt_state.rt_cfg.param_type == ParamType.DG_FULL:
-            params = [*self.grp_state.get_group(cid).params, *self.param_state.dg_shared]
+            params = (
+                [*self.grp_state.get_group(cid).params, *self.param_state.dg_shared]
+                if self.grp_state.get_group(cid).params
+                else []
+            )
         elif (
             self.rt_state.rt_cfg.param_type == ParamType.DG_PARTIAL
             or self.rt_state.rt_cfg.param_type == ParamType.CLUSTER
