@@ -106,7 +106,7 @@ class FedServer:
         params, param_type = [], ParamType.NONE
         if self.grp_state.groups: # has groups
             params = self.grp_state.get_group(cid).params
-            param_type = ParamType.CLUSTER if self.rt_state.is_cluster else ParamType.LOCAL
+            param_type = ParamType.CLUSTER if self.rt_state.is_cluster else ParamType.DG_PARTIAL
 
         return params, param_type
 
@@ -128,14 +128,14 @@ class FedServer:
 
         params = []
         # 第一轮全部重训
-        if self._time_step == 1 and self.rt_state.rt_cfg.param_type != ParamType.FULL:
-            self.rt_state.rt_cfg.selection = self.grp_state.all_clients
-            self.rt_state.rt_cfg.param_type = ParamType.FULL
+        # if self._time_step == 1 and self.rt_state.rt_cfg.param_type != ParamType.FULL:
+        #     self.rt_state.rt_cfg.selection = self.grp_state.all_clients
+        #     self.rt_state.rt_cfg.param_type = ParamType.FULL
 
-        elif self.rt_state.rt_cfg.param_type == ParamType.SHARED:
-            params = self.param_state.shared
+        if self.rt_state.rt_cfg.param_type == ParamType.DG_FULL:
+            params = [*self.grp_state.get_group(cid).params, *self.param_state.dg_shared]
         elif (
-            self.rt_state.rt_cfg.param_type == ParamType.LOCAL
+            self.rt_state.rt_cfg.param_type == ParamType.DG_PARTIAL
             or self.rt_state.rt_cfg.param_type == ParamType.CLUSTER
         ):
             params = self.grp_state.get_group(cid).params

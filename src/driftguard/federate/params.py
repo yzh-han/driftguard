@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, TypeAlias
+from typing import ClassVar, List, TypeAlias
 import numpy as np
 import torch
 import torch.nn as nn
@@ -13,8 +13,8 @@ Params: TypeAlias = List[np.ndarray]
 
 class ParamType(Enum):
     """Parameter names used for retraining aggregation."""
-    SHARED = "shared"
-    LOCAL = "local"
+    DG_FULL = "dg_full"
+    DG_PARTIAL = "dg_partial"
     FULL = "full"
     CLUSTER = "cluster"
     MOE = "moe"
@@ -25,21 +25,19 @@ class ParamType(Enum):
 
 @dataclass
 class FedParam:
-    shared: Params = field(default_factory=list)
+    LOCAL_SIZE: ClassVar[int] = 0
+    # 实例变量
+    dg_shared: Params = field(default_factory=list)
     local: Params = field(default_factory=list)
     full: Params = field(default_factory=list)
     moe_shared: Params = field(default_factory=list)
-    
-    def set_all(self, model: nn.Module) -> None:
-        """Set all parameters to the model."""
-        set_params(model, self.shared, names=["local", "gate"], exclude=True)
-        set_params(model, self.local, names=["local"])
 
     @staticmethod
     def freeze_exclude(model: nn.Module, param_type: ParamType) -> None:
-        if param_type == ParamType.SHARED:
-            freeze_layer(model, include_names=["local"])
-        elif param_type == ParamType.LOCAL:
+        if param_type == ParamType.DG_FULL:
+            # freeze_layer(model, include_names=["local"])
+            pass
+        elif param_type == ParamType.DG_PARTIAL:
             freeze_layer(model, include_names=["local"], exclude= True)
         elif param_type == ParamType.FULL or param_type == ParamType.CLUSTER or param_type == ParamType.MOE:
             pass
@@ -56,9 +54,16 @@ class FedParam:
 
     @staticmethod
     def set(model: nn.Module, params: Params, param_type: ParamType) -> None:
-        if param_type == ParamType.SHARED or param_type == ParamType.MOE:
+        if param_type == ParamType.DG_FULL:
+            len_local = FedParam.LOCAL_SIZE or len(
+                FedParam.get(model, ParamType.DG_PARTIAL)
+            )
+            local, shared = params[:len_local], params[len_local:]
+            set_params(model, local, names=["local"])
+            set_params(model, shared, names=["local", "gate"], exclude=True)
+        elif param_type == ParamType.MOE:
             set_params(model, params, names=["local", "gate"], exclude=True)
-        elif param_type == ParamType.LOCAL:
+        elif param_type == ParamType.DG_PARTIAL:
             set_params(model, params, names=["local"])
         elif param_type == ParamType.FULL or param_type == ParamType.CLUSTER:
             set_params(model, params)
@@ -66,9 +71,15 @@ class FedParam:
             raise ValueError(f"Unknown param_type: {param_type}")
     @staticmethod
     def get(model: nn.Module, param_type: ParamType) -> Params:
-        if param_type == ParamType.SHARED or param_type == ParamType.MOE:
+        if param_type == ParamType.DG_FULL: 
+            local = get_params(model, names=["local"])
+            shared = get_params(model, names=["local", "gate"], exclude=True)
+            return [*local, *shared]
+        elif param_type == ParamType.MOE:
             return get_params(model, names=["local", "gate"], exclude=True)
-        elif param_type == ParamType.LOCAL:
+        elif param_type == ParamType.DG_PARTIAL:
+            if FedParam.LOCAL_SIZE == 0:
+                FedParam.LOCAL_SIZE = len( get_params(model, names=["local"]) )
             return get_params(model, names=["local"])
         elif param_type == ParamType.FULL or param_type == ParamType.CLUSTER:
             return get_params(model)

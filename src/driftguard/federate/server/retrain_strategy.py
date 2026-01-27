@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Callable, List
 
+from driftguard import data
 from driftguard.config import get_logger
 from driftguard.federate.observation import Observation
 from driftguard.federate.params import FedParam, ParamType, Params, aggregate_params
@@ -14,21 +15,18 @@ from statistics import mean
 
 logger = get_logger("retrain_strategy")
 
+
+@dataclass
 class RetrainStrategy(ABC):
     """Pluggable retraining strategy for trigger and aggregation behavior."""
-    
+    data_port:int = 11001
+    server_port:int = 11002
+
+
     @property
     @abstractmethod
     def name(self) -> str:
         """Name of the retraining strategy."""
-    @property
-    @abstractmethod
-    def data_port(self) -> int:
-        """Port for data service."""
-    @property
-    @abstractmethod
-    def server_port(self) -> int:
-        """Port for server service."""
 
     @abstractmethod
     def on_obs(
@@ -59,12 +57,6 @@ class Never(RetrainStrategy):
     @property
     def name(self) -> str:
         return "never"
-    @property
-    def data_port(self) -> int:
-        return 11001
-    @property
-    def server_port(self) -> int:
-        return 11002
     
     def on_obs(
         self,
@@ -84,20 +76,13 @@ class Never(RetrainStrategy):
     ) -> None:
         rt_state.rt_cfg = RetrainConfig(False, [], ParamType.NONE)
         logger.debug("Retraining never triggered.")
-
+@dataclass
 class AveTrig(RetrainStrategy):
     """A retraining strategy that never triggers retraining."""
-    def __init__(self, thr_acc: float):
-        self.thr_acc = thr_acc
+    thr_acc: float = 0.65
     @property
     def name(self) -> str:
         return "average"
-    @property
-    def data_port(self) -> int:
-        return 11101
-    @property
-    def server_port(self) -> int:
-        return 11102
     
     def on_obs(
         self,
@@ -151,19 +136,14 @@ class AveTrig(RetrainStrategy):
         else:
             raise ValueError("Inconsistent retrain state.")
 
+@dataclass
 class PerCTrig(RetrainStrategy):
     """A retraining strategy that never triggers retraining."""
-    def __init__(self, thr_acc: float):
-        self.thr_acc = thr_acc
+    thr_acc: float = 0.65
+    
     @property
     def name(self) -> str:
         return "per_client"
-    @property
-    def data_port(self) -> int:
-        return 11201
-    @property
-    def server_port(self) -> int:
-        return 11202
     
     def on_obs(
         self,
@@ -220,20 +200,14 @@ class PerCTrig(RetrainStrategy):
             logger.debug("Retraining ended.")
         else:
             raise ValueError("Inconsistent retrain state.")
-
+@dataclass
 class MoEAve(RetrainStrategy):
     """A retraining strategy that never triggers retraining."""
-    def __init__(self, thr_acc: float):
-        self.thr_acc = thr_acc
+    thr_acc: float = 0.65
+
     @property
     def name(self) -> str:
         return "moe_ave"
-    @property
-    def data_port(self) -> int:
-        return 11301
-    @property
-    def server_port(self) -> int:
-        return 11302
     
     def on_obs(
         self,
@@ -287,19 +261,14 @@ class MoEAve(RetrainStrategy):
         else:
             raise ValueError("Inconsistent retrain state.")
 
+@dataclass
 class MoEPerC(RetrainStrategy):
     """A retraining strategy that never triggers retraining."""
-    def __init__(self, thr_acc: float):
-        self.thr_acc = thr_acc
+    thr_acc: float = 0.65
+
     @property
     def name(self) -> str:
         return "moe_perC"
-    @property
-    def data_port(self) -> int:
-        return 11401
-    @property
-    def server_port(self) -> int:
-        return 11402
 
     def on_obs(
         self,
@@ -358,21 +327,14 @@ class MoEPerC(RetrainStrategy):
             raise ValueError("Inconsistent retrain state.")
       
 
-
+@dataclass
 class Cluster(RetrainStrategy):
     """A retraining strategy that never triggers retraining."""
-    def __init__(self, thr_acc: float):
-        self.thr_acc = thr_acc
+    thr_acc: float = 0.65
 
     @property
     def name(self) -> str:
         return "cluster"
-    @property
-    def data_port(self) -> int:
-        return 11501
-    @property
-    def server_port(self) -> int:
-        return 11502
 
     def on_obs(
         self,
@@ -446,24 +408,16 @@ class Cluster(RetrainStrategy):
             logger.debug("Retraining ended.")
         else:
             raise ValueError("Inconsistent retrain state.")
-
-
-
+        
+@dataclass
 class Driftguard(RetrainStrategy):
     """Default retraining strategy based on reliance and group accuracy."""
-    def __init__(self, thr_reliance: float = 0.1, thr_group_acc: float = 0.8):
-        self.thr_reliance = thr_reliance
-        self.thr_group_acc = thr_group_acc
+    thr_reliance: float = 0.1
+    thr_group_acc: float = 0.65
 
     @property
     def name(self) -> str:
         return "driftguard"
-    @property
-    def data_port(self) -> int:
-        return 11601
-    @property
-    def server_port(self) -> int:
-        return 11602
 
     def on_obs(
         self,
@@ -507,7 +461,7 @@ class Driftguard(RetrainStrategy):
             # 1. 开始
             if reliance < self.thr_reliance:
                 # - 全局重训练
-                rt_state.rt_cfg = RetrainConfig(True, grp_state.all_clients, ParamType.SHARED)
+                rt_state.rt_cfg = RetrainConfig(True, grp_state.all_clients, ParamType.DG_FULL)
                 
                 rt_state.remain_round = rt_state._rt_round
                 logger.debug(f"Rt Cfg: {rt_state.rt_cfg}")
@@ -515,7 +469,7 @@ class Driftguard(RetrainStrategy):
             elif grps:
                 # - 分组重训练
                 rt_state.rt_cfg = RetrainConfig(
-                    True, [c for g in grps for c in g.clients], ParamType.LOCAL
+                    True, [c for g in grps for c in g.clients], ParamType.DG_PARTIAL
                 )
                 rt_state.remain_round = rt_state._rt_round
                 logger.debug(f"Rt Cfg: {rt_state.rt_cfg}")
@@ -533,7 +487,6 @@ class Driftguard(RetrainStrategy):
                 grp_state,
                 param_state,
             )
-
             rt_state.remain_round -= 1
 
         elif rt_state.stage == RetrainState.Stage.COMPLETED:
@@ -556,8 +509,8 @@ def aggregate(
     sel_clients: List[int] | None = None,
 ) -> None:
     # 2.1 聚合参数
-    if rt_cfg.param_type == ParamType.LOCAL or rt_cfg.param_type == ParamType.CLUSTER:
-        assert rt_cfg.selection is not None or [], "need selection"
+    if rt_cfg.param_type == ParamType.DG_PARTIAL or rt_cfg.param_type == ParamType.CLUSTER:
+        assert rt_cfg.selection, "need selection"
         grps = grp_state.unique_groups(
             rt_cfg.selection
         )
@@ -567,9 +520,24 @@ def aggregate(
                 [params_list[c] for c in g.clients if c in rt_cfg.selection]
             )
     # 2.2 全局训练
-    elif rt_cfg.param_type == ParamType.SHARED:
-        params = aggregate_params(params_list)
-        param_state.shared = params
+    elif rt_cfg.param_type == ParamType.DG_FULL:
+        assert FedParam.LOCAL_SIZE != 0, "LOCAL_SIZE not set"
+        local_params_list, shared_params_list = (
+            [params[: FedParam.LOCAL_SIZE] for params in params_list],
+            [params[FedParam.LOCAL_SIZE :] for params in params_list],
+        )
+        # local
+        assert rt_cfg.selection, "need selection"
+        grps = grp_state.unique_groups(
+            rt_cfg.selection
+        )
+        for g in grps:
+            # 更新组内参数
+            g.params = aggregate_params(
+                [local_params_list[c] for c in g.clients if c in rt_cfg.selection]
+            )
+        # shared
+        param_state.dg_shared = aggregate_params(shared_params_list)
     elif rt_cfg.param_type == ParamType.FULL:
         if sel_clients is not None:
             params = aggregate_params(

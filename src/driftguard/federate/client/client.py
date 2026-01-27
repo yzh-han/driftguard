@@ -58,7 +58,7 @@ class FedClient:
             samples = self.d_proxy.get_data((self.cid, time_step)) 
             logger.debug(f"c_{self.cid}: time_step {time_step}, samples {len(samples)}")           
 
-            # step 2. upload observations
+            # step 2. upload observations, update local params
             obs = self.inference(samples)
             params, param_type = self.s_proxy.req_upload_obs((self.cid, obs))
             if params and param_type:
@@ -98,7 +98,7 @@ class FedClient:
 
                 params = FedParam.get(self.model, rt_cfg.param_type)
                 
-            self._buffer = samples[-10:]  
+            self._buffer = samples[-10:]
 
         self.recorder.record(self.cid)
 

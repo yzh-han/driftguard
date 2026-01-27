@@ -96,21 +96,24 @@ exps = Exps(
     datasets=[
         # DATASET.DG5, 
         DATASET.PACS, 
-        DATASET.DDN
+        # DATASET.DDN
     ],
     models=[
         # MODEL.CRST_S, 
         MODEL.CRST_M, 
-        MODEL.CVIT
+        # MODEL.CVIT
     ],
     strategies=[
         # Never(),
-        # AveTrig(thr_acc=0.65),
-        # PerCTrig(thr_acc=0.65),
-        # MoEAve(thr_acc=0.65),
-        # MoEPerC(thr_acc=0.65),
-        # Cluster(thr_acc=0.65),
-        Driftguard(thr_reliance=0.2, thr_group_acc=0.65)
+        # AveTrig(thr_acc=0.65, data_port=11101, server_port=11102),
+        # PerCTrig(thr_acc=0.65, data_port=11201, server_port=11202),
+        # MoEAve(thr_acc=0.65, data_port=11301, server_port=11302),
+        # MoEPerC(thr_acc=0.65, data_port=11401, server_port=11402),
+        # Cluster(thr_acc=0.65, data_port=11501, server_port=11502),
+        Driftguard(thr_reliance=0.25, thr_group_acc=0.65, data_port=11601, server_port=11602),
+        Driftguard(thr_reliance=0.35, thr_group_acc=0.65, data_port=11701, server_port=11702),
+        Driftguard(thr_reliance=0.3, thr_group_acc=0.65, data_port=11801, server_port=11802),
+        Driftguard(thr_reliance=0.4, thr_group_acc=0.65, data_port=11901, server_port=11902),
     ],
     device = "cuda:0" if torch.cuda.is_available() else "cpu", # <--------------------
 ).exps
