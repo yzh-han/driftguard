@@ -21,12 +21,7 @@ class RetrainStrategy(ABC):
     """Pluggable retraining strategy for trigger and aggregation behavior."""
     data_port:int = 11001
     server_port:int = 11002
-
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Name of the retraining strategy."""
+    name: str=""
 
     @abstractmethod
     def on_obs(
@@ -51,13 +46,10 @@ class RetrainStrategy(ABC):
         """
         Handle retraining trigger and aggregation logic.
         """
-
+@dataclass
 class Never(RetrainStrategy):
     """A retraining strategy that never triggers retraining."""
-    @property
-    def name(self) -> str:
-        return "never"
-    
+    name: str = "never"
     def on_obs(
         self,
         obs_list: List[Observation],
@@ -76,13 +68,12 @@ class Never(RetrainStrategy):
     ) -> None:
         rt_state.rt_cfg = RetrainConfig(False, [], ParamType.NONE)
         logger.debug("Retraining never triggered.")
+
 @dataclass
 class AveTrig(RetrainStrategy):
     """A retraining strategy that never triggers retraining."""
     thr_acc: float = 0.65
-    @property
-    def name(self) -> str:
-        return "average"
+    name: str = "average"
     
     def on_obs(
         self,
@@ -140,10 +131,7 @@ class AveTrig(RetrainStrategy):
 class PerCTrig(RetrainStrategy):
     """A retraining strategy that never triggers retraining."""
     thr_acc: float = 0.65
-    
-    @property
-    def name(self) -> str:
-        return "per_client"
+    name: str = "per_client"
     
     def on_obs(
         self,
@@ -205,9 +193,7 @@ class MoEAve(RetrainStrategy):
     """A retraining strategy that never triggers retraining."""
     thr_acc: float = 0.65
 
-    @property
-    def name(self) -> str:
-        return "moe_ave"
+    name: str = "moe_ave"
     
     def on_obs(
         self,
@@ -266,9 +252,7 @@ class MoEPerC(RetrainStrategy):
     """A retraining strategy that never triggers retraining."""
     thr_acc: float = 0.65
 
-    @property
-    def name(self) -> str:
-        return "moe_perC"
+    name: str = "moe_perC"
 
     def on_obs(
         self,
@@ -331,11 +315,7 @@ class MoEPerC(RetrainStrategy):
 class Cluster(RetrainStrategy):
     """A retraining strategy that never triggers retraining."""
     thr_acc: float = 0.65
-
-    @property
-    def name(self) -> str:
-        return "cluster"
-
+    name: str = "cluster"
     def on_obs(
         self,
         obs_list: List[Observation],
@@ -415,9 +395,7 @@ class Driftguard(RetrainStrategy):
     thr_reliance: float = 0.1
     thr_group_acc: float = 0.65
 
-    @property
-    def name(self) -> str:
-        return "driftguard"
+    name: str = "driftguard"
 
     def on_obs(
         self,

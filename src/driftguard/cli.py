@@ -110,10 +110,10 @@ exps = Exps(
         # MoEAve(thr_acc=0.65, data_port=11301, server_port=11302),
         # MoEPerC(thr_acc=0.65, data_port=11401, server_port=11402),
         # Cluster(thr_acc=0.65, data_port=11501, server_port=11502),
-        Driftguard(thr_reliance=0.25, thr_group_acc=0.65, data_port=11601, server_port=11602),
-        Driftguard(thr_reliance=0.35, thr_group_acc=0.65, data_port=11701, server_port=11702),
-        Driftguard(thr_reliance=0.3, thr_group_acc=0.65, data_port=11801, server_port=11802),
-        Driftguard(thr_reliance=0.4, thr_group_acc=0.65, data_port=11901, server_port=11902),
+        Driftguard(thr_reliance=0.25, thr_group_acc=0.65, data_port=11601, server_port=11602, name="reliance_25"),
+        Driftguard(thr_reliance=0.35, thr_group_acc=0.65, data_port=11701, server_port=11702, name="reliance_35"),
+        Driftguard(thr_reliance=0.3, thr_group_acc=0.65, data_port=11801, server_port=11802, name="reliance_30"),
+        Driftguard(thr_reliance=0.4, thr_group_acc=0.65, data_port=11901, server_port=11902, name="reliance_40"),
     ],
     device = "cuda:0" if torch.cuda.is_available() else "cpu", # <--------------------
 ).exps
@@ -124,7 +124,7 @@ def main() -> None:
         print("\n\n")
         logger.info(f"[Experiment]: {exp.name}, Dataset: {exp.dataset.name}, Model: {exp.model.value}, Strategy: {exp.strategy.name}")
         cfg = LaunchConfig(
-            exp_root="exp/exp_full_try1",
+            exp_root=f"exp/ablation_{exp.strategy.name}",
             exp_name=exp.name,
             # data service
             sample_size_per_step = 30,
