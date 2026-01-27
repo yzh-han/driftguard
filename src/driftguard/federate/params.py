@@ -60,7 +60,8 @@ class FedParam:
             )
             local, shared = params[:len_local], params[len_local:]
             set_params(model, local, names=["local"])
-            set_params(model, shared, names=["local", "gate"], exclude=True)
+            if shared:
+                set_params(model, shared, names=["local", "gate"], exclude=True)
         elif param_type == ParamType.MOE:
             set_params(model, params, names=["local", "gate"], exclude=True)
         elif param_type == ParamType.DG_PARTIAL:
