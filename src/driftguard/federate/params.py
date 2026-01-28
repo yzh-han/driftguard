@@ -35,7 +35,7 @@ class FedParam:
     @staticmethod
     def freeze_exclude(model: nn.Module, param_type: ParamType) -> None:
         if param_type == ParamType.DG_FULL:
-            # freeze_layer(model, include_names=["local"])
+            freeze_layer(model, include_names=["local"])
             pass
         elif param_type == ParamType.DG_PARTIAL:
             freeze_layer(model, include_names=["local"], exclude= True)
@@ -55,15 +55,16 @@ class FedParam:
     @staticmethod
     def set(model: nn.Module, params: Params, param_type: ParamType) -> None:
         if param_type == ParamType.DG_FULL:
-            len_local = FedParam.LOCAL_SIZE or len(
-                FedParam.get(model, ParamType.DG_PARTIAL)
-            )
-            local, shared = params[:len_local], params[len_local:]
-            set_params(model, local, names=["local"])
-            if shared:
-                set_params(model, shared, names=["local", "gate"], exclude=True)
+            set_params(model, params, names=["local"], exclude=True)
+            # len_local = FedParam.LOCAL_SIZE or len(
+            #     FedParam.get(model, ParamType.DG_PARTIAL)
+            # )
+            # local, shared = params[:len_local], params[len_local:]
+            # set_params(model, local, names=["local"])
+            # if shared:
+                # set_params(model, shared, names=["local", "gate"], exclude=True)
         elif param_type == ParamType.MOE:
-            set_params(model, params, names=["local", "gate"], exclude=True)
+            set_params(model, params, names=["local"], exclude=True)
         elif param_type == ParamType.DG_PARTIAL:
             set_params(model, params, names=["local"])
         elif param_type == ParamType.FULL or param_type == ParamType.CLUSTER:
@@ -73,11 +74,14 @@ class FedParam:
     @staticmethod
     def get(model: nn.Module, param_type: ParamType) -> Params:
         if param_type == ParamType.DG_FULL: 
-            local = get_params(model, names=["local"])
-            shared = get_params(model, names=["local", "gate"], exclude=True)
-            return [*local, *shared]
+            return get_params(model, names=["local"], exclude=True)
+            # return get_params(model, names=["local", "gate"], exclude=True)
+            # local = get_params(model, names=["local"])
+            # shared = get_params(model, names=["local", "gate"], exclude=True)
+            # return [*local, *shared]
         elif param_type == ParamType.MOE:
-            return get_params(model, names=["local", "gate"], exclude=True)
+            return get_params(model, names=["local"], exclude=True)
+            # return get_params(model, names=["local", "gate"], exclude=True)
         elif param_type == ParamType.DG_PARTIAL:
             if FedParam.LOCAL_SIZE == 0:
                 FedParam.LOCAL_SIZE = len( get_params(model, names=["local"]) )

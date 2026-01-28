@@ -434,11 +434,9 @@ class Driftguard(RetrainStrategy):
 
         logger.info(f"Reliance: {reliance:.2f}")
 
-
         if rt_state.stage == RetrainState.Stage.IDLE:
             # 1. 开始
             if reliance < self.thr_reliance:
-                # - 全局重训练
                 rt_state.rt_cfg = RetrainConfig(True, grp_state.all_clients, ParamType.DG_FULL)
                 
                 rt_state.remain_round = rt_state._rt_round
@@ -455,7 +453,7 @@ class Driftguard(RetrainStrategy):
                 # - 不重训练 keep cfg
                 rt_state.rt_cfg = RetrainConfig(False, [], ParamType.NONE)
                 logger.debug(f"Rt Cfg: {rt_state.rt_cfg}")
-
+        
         elif rt_state.stage == RetrainState.Stage.ONGOING:
             # 2. 继续训练
             # 2.1 聚合参数
@@ -466,7 +464,7 @@ class Driftguard(RetrainStrategy):
                 param_state,
             )
             rt_state.remain_round -= 1
-
+            
         elif rt_state.stage == RetrainState.Stage.COMPLETED:
             aggregate(
                 params_list,
@@ -474,8 +472,16 @@ class Driftguard(RetrainStrategy):
                 grp_state,
                 param_state,
             )
-            rt_state.rt_cfg.trigger = False
-            logger.debug("Retraining ended.")
+            if rt_state.rt_cfg.param_type == ParamType.DG_FULL and grps:
+                # - 分组重训练
+                rt_state.rt_cfg = RetrainConfig(
+                    True, [c for g in grps for c in g.clients], ParamType.DG_PARTIAL
+                )
+                rt_state.remain_round = rt_state._rt_round
+                logger.info(f"DG_FULL_COMPLETED Trig partial: {rt_state.rt_cfg}")
+            else:
+                rt_state.rt_cfg.trigger = False
+                logger.debug("Retraining ended.")
         else:
             raise ValueError("Inconsistent retrain state.")
     
@@ -499,23 +505,30 @@ def aggregate(
             )
     # 2.2 全局训练
     elif rt_cfg.param_type == ParamType.DG_FULL:
-        assert FedParam.LOCAL_SIZE != 0, "LOCAL_SIZE not set"
-        local_params_list, shared_params_list = (
-            [params[: FedParam.LOCAL_SIZE] for params in params_list],
-            [params[FedParam.LOCAL_SIZE :] for params in params_list],
-        )
-        # local
-        assert rt_cfg.selection, "need selection"
-        grps = grp_state.unique_groups(
-            rt_cfg.selection
-        )
-        for g in grps:
-            # 更新组内参数
-            g.params = aggregate_params(
-                [local_params_list[c] for c in g.clients if c in rt_cfg.selection]
+        if sel_clients is not None:
+            params = aggregate_params(
+                [params_list[i] for i in range(len(params_list)) if i in sel_clients]
             )
-        # shared
-        param_state.dg_shared = aggregate_params(shared_params_list)
+        else:
+            params = aggregate_params(params_list)
+        param_state.dg_shared = params
+        # assert FedParam.LOCAL_SIZE != 0, "LOCAL_SIZE not set"
+        # local_params_list, shared_params_list = (
+        #     [params[: FedParam.LOCAL_SIZE] for params in params_list],
+        #     [params[FedParam.LOCAL_SIZE :] for params in params_list],
+        # )
+        # # local
+        # assert rt_cfg.selection, "need selection"
+        # grps = grp_state.unique_groups(
+        #     rt_cfg.selection
+        # )
+        # for g in grps:
+        #     # 更新组内参数
+        #     g.params = aggregate_params(
+        #         [local_params_list[c] for c in g.clients if c in rt_cfg.selection]
+        #     )
+        # # shared
+        # param_state.dg_shared = aggregate_params(shared_params_list)
     elif rt_cfg.param_type == ParamType.FULL:
         if sel_clients is not None:
             params = aggregate_params(

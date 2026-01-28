@@ -83,7 +83,6 @@ class RetrainState:
             return self.Stage.ONGOING
         else:
             if self.rt_cfg.trigger:
-                # completed: remain 0 but trigger True
                 return self.Stage.COMPLETED
             else:
                 # idle: remain 0 and not trigger
