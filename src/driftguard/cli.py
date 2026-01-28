@@ -115,7 +115,7 @@ exps = Exps(
         Driftguard(thr_reliance=0.3, thr_group_acc=0.65, data_port=12801, server_port=12802, name="reliance_30"),
         # Driftguard(thr_reliance=0.4, thr_group_acc=0.65, data_port=11901, server_port=11902, name="reliance_40"),
     ],
-    device = "cuda:0" if torch.cuda.is_available() else "cpu", # <--------------------
+    device = "cuda:1" if torch.cuda.is_available() else "cpu", # <--------------------
 ).exps
 
 def main() -> None:
