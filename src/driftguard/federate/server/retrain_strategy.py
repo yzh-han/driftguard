@@ -608,7 +608,9 @@ class Driftguard(RetrainStrategy):
 
         if rt_state.rt_cfg.param_type == ParamType.DG_PARTIAL:
             # retrain local for selected clients
-            if cid in rt_state.rt_cfg.selection:
+            if rt_state.remain_round == 0:
+                pass
+            elif cid in rt_state.rt_cfg.selection:
                 fed_params.local = grp_state.get_group(cid).params or fed_params_list[cid].local
         elif rt_state.rt_cfg.param_type == ParamType.DG_FULL:
             fed_params.other = param_state.other or fed_params_list[cid].other

@@ -62,11 +62,11 @@ class FedClient:
             obs = self.inference(samples)
             fed_params,  = self.s_proxy.req_upload_obs((self.cid, obs))
             # set params
-            fed_params.set(self.model)
+            # fed_params.set(self.model)
 
             self.recorder.update_acc(time_step, obs.accuracy) 
             # step 3. trigger retrain if needed
-            obs = self.inference(samples) #
+            # obs = self.inference(samples) #
             # self.recorder.update_acc(time_step, obs.accuracy)    
 
             train_sets, val_sets = [*self._buffer, *samples[:-10]], samples[-10:]
@@ -76,12 +76,16 @@ class FedClient:
                 fed_params, rt_cfg = self.s_proxy.req_trig(
                     (self.cid, obs, FedParam.get(self.model))
                 )
-                fed_params.set(self.model) # 更新参数
                 
-                # 1. stop
+                # stop
                 if not rt_cfg.trigger:
+                    if rt_cfg.param_type != ParamType.NONE:
+                        fed_params.set(self.model) # n. last params update
                     break
                 
+                # 1. 准备更新参数
+                fed_params.set(self.model) 
+
                 # 2. no params need to retrain
                 if not fed_params.gate:
                     freeze_layer(self.model, include_names=["gate"])

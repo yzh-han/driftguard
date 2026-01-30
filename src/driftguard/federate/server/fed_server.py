@@ -97,9 +97,9 @@ class FedServer:
 
         def on_obs(obs_list: List[Observation], grp_state: GroupState, rt_state: RetrainState) -> None:
             self.rt_strategy.on_obs(obs_list, grp_state, rt_state)
-            logger.info(f"-* [Ave Acc 1] *-  {sum(o.accuracy for o in obs_list)/len(obs_list):.4f}")
+            logger.info(f"-* [Ave Acc] *-  {sum(o.accuracy for o in obs_list)/len(obs_list):.4f}")
             logger.info(
-                f"[Groups] {[f'{g}: {acc:.2f}' for g, acc in Observation.group_ave_acc(obs_list, grp_state.groups)]}"
+                f"[-* Groups *-] {[f'{g}: {acc:.2f}' for g, acc in Observation.group_ave_acc(obs_list, grp_state.groups)]}"
             )
         self._sync.await_upload_obs(cid, on_obs, obs, self.grp_state, self.rt_state)
         
@@ -124,11 +124,9 @@ class FedServer:
             grp_state: GroupState,
             param_state: FedParam,
         ) -> None:
-            logger.info(f"-* [Ave Acc 2] *- {sum(o.accuracy for o in obs_list)/len(obs_list):.4f}")
-            logger.info(
-                f"[Groups 2] {[f'{g}: {acc:.2f}' for g, acc in Observation.group_ave_acc(obs_list, grp_state.groups)]}"
-            )
+            # 闭包 获取所有客户端的 fed_params
             current_fed_params_list.extend(fed_params_list)
+
             self.rt_strategy.on_trig(obs_list, fed_params_list, rt_state, grp_state, param_state)
             logger.info(f"[Retrain Trigger] rt_cfg: {rt_state.rt_cfg}, retrain: {rt_state.remain_round}")
 
