@@ -4,7 +4,7 @@ from enum import Enum
 from typing import Any, Generic, Tuple, TypeVar
 
 from driftguard.federate.observation import Observation
-from driftguard.federate.params import ParamType, Params
+from driftguard.federate.params import FedParam, ParamType, Params
 from driftguard.federate.retrain_config import RetrainConfig
 
 
@@ -30,7 +30,7 @@ class ReqState:
             c: Req() for c in range(num_clients)
         }
         # 
-        self.trig: dict[int, Req[Tuple[Observation, Params]]] = {
+        self.trig: dict[int, Req[Tuple[Observation, FedParam]]] = {
             c: Req() for c in range(num_clients)
         }
     

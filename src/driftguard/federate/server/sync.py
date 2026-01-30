@@ -73,9 +73,9 @@ class ServerSyncCoordinator:
     def await_trig(
         self,
         cid: int,
-        on_trig: Callable[[List[Observation], List[Params], RetrainState, GroupState, FedParam]],
+        on_trig: Callable[[List[Observation], List[FedParam], RetrainState, GroupState, FedParam]],
         obs: Observation,
-        params: Params,
+        fed_params: FedParam,
         rt_state: RetrainState,
         grp_state: GroupState,
         param_state: FedParam,
@@ -85,16 +85,16 @@ class ServerSyncCoordinator:
         """
         with self._trig_lock:
             self.req_state.trig[cid].recv = True
-            self.req_state.trig[cid].payload = obs, params
+            self.req_state.trig[cid].payload = obs, fed_params
 
             if self.req_state.all_recv("trig"):
                 logger.debug("All [trig_req] received from clients.")
                 payloads = [
                     self.req_state.trig[c].payload for c in self.req_state.trig.keys()
                 ]
-                obs_list, params_list = zip(*payloads)  # type: ignore
+                obs_list, fed_params_list = zip(*payloads)  # type: ignore
                 # to be implemented
-                on_trig(obs_list, params_list, rt_state, grp_state, param_state)
+                on_trig(obs_list, fed_params_list, rt_state, grp_state, param_state)
                 
                 self.req_state.reset()
                 self._trig_cv.notify_all()

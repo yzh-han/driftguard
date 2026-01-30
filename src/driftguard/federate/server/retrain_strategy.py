@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, List
+from typing import TYPE_CHECKING, Callable, List, Tuple
 
 from driftguard import data
 from driftguard.config import get_logger
@@ -11,6 +11,7 @@ from driftguard.federate.params import FedParam, ParamType, Params, aggregate_pa
 from driftguard.federate.retrain_config import RetrainConfig
 from driftguard.federate.server.cluster import Group, GroupState
 from driftguard.federate.server.state import RetrainState
+    
 from statistics import mean
 
 logger = get_logger("retrain_strategy")
@@ -38,7 +39,7 @@ class RetrainStrategy(ABC):
     def on_trig(
         self,
         obs_list: List[Observation],
-        params_list: List[Params],
+        fed_params_list: List[FedParam],
         rt_state: RetrainState,
         grp_state: GroupState,
         param_state: FedParam,
@@ -46,6 +47,19 @@ class RetrainStrategy(ABC):
         """
         Handle retraining trigger and aggregation logic.
         """
+
+    @abstractmethod
+    def res_trig(
+        self,
+        cid: int,
+        rt_state: RetrainState,
+        param_state: FedParam,
+        grp_state: GroupState,
+        fed_params_list: List[FedParam],
+    ) -> Tuple[FedParam, RetrainConfig]:
+        "return params need to retrain, "
+        pass
+
 @dataclass
 class Never(RetrainStrategy):
     """A retraining strategy that never triggers retraining."""
@@ -61,7 +75,7 @@ class Never(RetrainStrategy):
     def on_trig(
         self,
         obs_list: List[Observation],
-        params_list: List[Params],
+        fed_params_list: List[FedParam],
         rt_state: RetrainState,
         grp_state: GroupState,
         param_state: FedParam,
@@ -69,6 +83,21 @@ class Never(RetrainStrategy):
         rt_state.rt_cfg = RetrainConfig(False, [], ParamType.NONE)
         logger.debug("Retraining never triggered.")
 
+    def res_trig(
+        self,
+        cid: int,
+        rt_state: RetrainState,
+        param_state: FedParam,
+        grp_state: GroupState,
+        fed_params_list: List[FedParam],
+    ) -> Tuple[FedParam, RetrainConfig]:
+        "return params need to retrain, "
+        assert rt_state.rt_cfg.param_type in [
+            ParamType.NONE,
+        ], "Never only supports NONE."
+        fed_params = FedParam()
+        return fed_params, rt_state.rt_cfg
+    
 @dataclass
 class AveTrig(RetrainStrategy):
     """A retraining strategy that never triggers retraining."""
@@ -86,7 +115,7 @@ class AveTrig(RetrainStrategy):
     def on_trig(
         self,
         obs_list: List[Observation],
-        params_list: List[Params],
+        fed_params_list: List[FedParam],
         rt_state: RetrainState,
         grp_state: GroupState,
         param_state: FedParam,
@@ -102,31 +131,48 @@ class AveTrig(RetrainStrategy):
             else:
                 # - 不重训练 keep cfg
                 rt_state.rt_cfg = RetrainConfig(False, [], ParamType.NONE)
-
-        elif rt_state.stage == RetrainState.Stage.ONGOING:
-            # 2. 继续训练
-            # 2.1 聚合参数
-            aggregate(
-                params_list,
-                rt_state.rt_cfg,
-                grp_state,
-                param_state,
-            )
-
-            rt_state.remain_round -= 1
-
-        elif rt_state.stage == RetrainState.Stage.COMPLETED:
-            aggregate(
-                params_list,
-                rt_state.rt_cfg,
-                grp_state,
-                param_state,
-            )
-            rt_state.rt_cfg.trigger = False
-            logger.debug("Retraining ended.")
         else:
-            raise ValueError("Inconsistent retrain state.")
-
+            param_state.gate = aggregate_params(
+                [p.gate for p in fed_params_list],
+            )
+            param_state.local = aggregate_params(
+                [p.local for p in fed_params_list],
+            )
+            param_state.other = aggregate_params(
+                [p.other for p in fed_params_list],
+            )
+            if rt_state.stage == RetrainState.Stage.ONGOING:
+                rt_state.remain_round -= 1
+            elif rt_state.stage == RetrainState.Stage.COMPLETED:
+                rt_state.rt_cfg.trigger = False
+                logger.debug("Retraining ended.")
+            else:
+                raise ValueError("Inconsistent retrain state.")
+    def res_trig(
+        self,
+        cid: int,
+        rt_state: RetrainState,
+        param_state: FedParam,
+        grp_state: GroupState,
+        fed_params_list: List[FedParam],
+    ) -> Tuple[FedParam, RetrainConfig]:
+        "return params need to retrain, "
+        assert rt_state.rt_cfg.param_type in [
+            ParamType.FULL,
+            ParamType.NONE,
+        ], "AveTrig only supports FULL, NONE."
+        # blank for no retrain
+        fed_params = FedParam()
+        if not rt_state.rt_cfg.trigger and rt_state.rt_cfg.param_type == ParamType.NONE:
+            return fed_params, rt_state.rt_cfg
+        
+        # retrain
+        if cid in rt_state.rt_cfg.selection:
+            fed_params.gate = param_state.gate or fed_params_list[cid].gate
+            fed_params.local = param_state.local or fed_params_list[cid].local
+            fed_params.other = param_state.other or fed_params_list[cid].other
+        return fed_params, rt_state.rt_cfg
+    
 @dataclass
 class PerCTrig(RetrainStrategy):
     """A retraining strategy that never triggers retraining."""
@@ -144,7 +190,7 @@ class PerCTrig(RetrainStrategy):
     def on_trig(
         self,
         obs_list: List[Observation],
-        params_list: List[Params],
+        fed_params_list: List[FedParam],
         rt_state: RetrainState,
         grp_state: GroupState,
         param_state: FedParam,
@@ -162,32 +208,47 @@ class PerCTrig(RetrainStrategy):
             else:
                 # - 不重训练 keep cfg
                 rt_state.rt_cfg = RetrainConfig(False, [], ParamType.NONE)
-
-        elif rt_state.stage == RetrainState.Stage.ONGOING:
-            # 2. 继续训练
-            # 2.1 聚合参数
-            aggregate(
-                params_list,
-                rt_state.rt_cfg,
-                grp_state,
-                param_state,
-                sel_clients=rt_state.rt_cfg.selection,
-            )
-
-            rt_state.remain_round -= 1
-
-        elif rt_state.stage == RetrainState.Stage.COMPLETED:
-            aggregate(
-                params_list,
-                rt_state.rt_cfg,
-                grp_state,
-                param_state,
-                sel_clients=rt_state.rt_cfg.selection,
-            )
-            rt_state.rt_cfg.trigger = False
-            logger.debug("Retraining ended.")
         else:
-            raise ValueError("Inconsistent retrain state.")
+            param_state.gate = aggregate_params(
+                [fed_params_list[c].gate for c in rt_state.rt_cfg.selection],
+            )
+            param_state.local = aggregate_params(
+                [fed_params_list[c].local for c in rt_state.rt_cfg.selection],
+            )
+            param_state.other = aggregate_params(
+                [fed_params_list[c].other for c in rt_state.rt_cfg.selection],
+            )
+            if rt_state.stage == RetrainState.Stage.ONGOING:
+                rt_state.remain_round -= 1
+            elif rt_state.stage == RetrainState.Stage.COMPLETED:
+                rt_state.rt_cfg.trigger = False
+                logger.debug("Retraining ended.")
+            else:
+                raise ValueError("Inconsistent retrain state.")
+    def res_trig(
+        self,
+        cid: int,
+        rt_state: RetrainState,
+        param_state: FedParam,
+        grp_state: GroupState,
+        fed_params_list: List[FedParam],
+    ) -> Tuple[FedParam, RetrainConfig]:
+        "return params need to retrain, "
+        assert rt_state.rt_cfg.param_type in [
+            ParamType.FULL,
+            ParamType.NONE,
+        ], "PerCTrig only supports FULL, NONE."
+        # blank for no retrain
+        fed_params = FedParam()
+        if not rt_state.rt_cfg.trigger and rt_state.rt_cfg.param_type == ParamType.NONE:
+            return fed_params, rt_state.rt_cfg
+        
+        # retrain 
+        if cid in rt_state.rt_cfg.selection:
+            fed_params.gate = param_state.gate or fed_params_list[cid].gate
+            fed_params.local = param_state.local or fed_params_list[cid].local
+            fed_params.other = param_state.other or fed_params_list[cid].other
+        return fed_params, rt_state.rt_cfg
 @dataclass
 class MoEAve(RetrainStrategy):
     """A retraining strategy that never triggers retraining."""
@@ -206,7 +267,7 @@ class MoEAve(RetrainStrategy):
     def on_trig(
         self,
         obs_list: List[Observation],
-        params_list: List[Params],
+        fed_params_list: List[FedParam],
         rt_state: RetrainState,
         grp_state: GroupState,
         param_state: FedParam,
@@ -222,31 +283,45 @@ class MoEAve(RetrainStrategy):
             else:
                 # - 不重训练 keep cfg
                 rt_state.rt_cfg = RetrainConfig(False, [], ParamType.NONE)
-
-        elif rt_state.stage == RetrainState.Stage.ONGOING:
-            # 2. 继续训练
-            # 2.1 聚合参数
-            aggregate(
-                params_list,
-                rt_state.rt_cfg,
-                grp_state,
-                param_state,
-            )
-
-            rt_state.remain_round -= 1
-
-        elif rt_state.stage == RetrainState.Stage.COMPLETED:
-            aggregate(
-                params_list,
-                rt_state.rt_cfg,
-                grp_state,
-                param_state,
-            )
-            rt_state.rt_cfg.trigger = False
-            logger.debug("Retraining ended.")
         else:
-            raise ValueError("Inconsistent retrain state.")
+            param_state.gate = aggregate_params(
+                [p.gate for p in fed_params_list],
+            )
+            param_state.other = aggregate_params(
+                [p.other for p in fed_params_list],
+            )
 
+            if rt_state.stage == RetrainState.Stage.ONGOING:
+                rt_state.remain_round -= 1
+            elif rt_state.stage == RetrainState.Stage.COMPLETED:
+                rt_state.rt_cfg.trigger = False
+                logger.debug("Retraining ended.")
+            else:
+                raise ValueError("Inconsistent retrain state.")
+    def res_trig(
+        self,
+        cid: int,
+        rt_state: RetrainState,
+        param_state: FedParam,
+        grp_state: GroupState,
+        fed_params_list: List[FedParam],
+    ) -> Tuple[FedParam, RetrainConfig]:
+        "return params need to retrain, "
+        assert rt_state.rt_cfg.param_type in [
+            ParamType.MOE,
+            ParamType.NONE,
+        ], "MoEAve only supports MOE, NONE."
+        # blank for no retrain
+        fed_params = FedParam()
+        if not rt_state.rt_cfg.trigger and rt_state.rt_cfg.param_type == ParamType.NONE:
+            return fed_params, rt_state.rt_cfg
+        
+        # retrain 
+        # retrain local for selected clients
+        if cid in rt_state.rt_cfg.selection:
+            fed_params.gate = param_state.gate or fed_params_list[cid].gate
+            fed_params.other = param_state.other or fed_params_list[cid].other
+        return fed_params, rt_state.rt_cfg
 @dataclass
 class MoEPerC(RetrainStrategy):
     """A retraining strategy that never triggers retraining."""
@@ -265,7 +340,7 @@ class MoEPerC(RetrainStrategy):
     def on_trig(
         self,
         obs_list: List[Observation],
-        params_list: List[Params],
+        fed_params_list: List[FedParam],
         rt_state: RetrainState,
         grp_state: GroupState,
         param_state: FedParam,
@@ -283,33 +358,51 @@ class MoEPerC(RetrainStrategy):
             else:
                 # - 不重训练 keep cfg
                 rt_state.rt_cfg = RetrainConfig(False, [], ParamType.NONE)
-
-        elif rt_state.stage == RetrainState.Stage.ONGOING:
-            # 2. 继续训练
-            # 2.1 聚合参数
-            aggregate(
-                params_list,
-                rt_state.rt_cfg,
-                grp_state,
-                param_state,
-                sel_clients=rt_state.rt_cfg.selection,
-            )
-
-            rt_state.remain_round -= 1
-
-        elif rt_state.stage == RetrainState.Stage.COMPLETED:
-            aggregate(
-                params_list,
-                rt_state.rt_cfg,
-                grp_state,
-                param_state,
-                sel_clients=rt_state.rt_cfg.selection,
-            )
-            rt_state.rt_cfg.trigger = False
-            logger.debug("Retraining ended.")
         else:
-            raise ValueError("Inconsistent retrain state.")
-      
+            param_state.gate = aggregate_params(
+                [
+                    fed_params_list[c].gate
+                    for c in rt_state.rt_cfg.selection
+                ],
+            )
+            param_state.other = aggregate_params(
+                [
+                    fed_params_list[c].other
+                    for c in rt_state.rt_cfg.selection
+                ],
+            )
+            
+            if rt_state.stage == RetrainState.Stage.ONGOING:
+                rt_state.remain_round -= 1
+            elif rt_state.stage == RetrainState.Stage.COMPLETED:
+                rt_state.rt_cfg.trigger = False
+                logger.debug("Retraining ended.")
+
+    def res_trig(
+        self,
+        cid: int,
+        rt_state: RetrainState,
+        param_state: FedParam,
+        grp_state: GroupState,
+        fed_params_list: List[FedParam],
+    ) -> Tuple[FedParam, RetrainConfig]:
+        "return params need to retrain, "
+        assert rt_state.rt_cfg.param_type in [
+            ParamType.MOE,
+            ParamType.NONE,
+        ], "MoEPerC only supports MOE, NONE."
+        # blank for no retrain
+        fed_params = FedParam()
+        if not rt_state.rt_cfg.trigger and rt_state.rt_cfg.param_type == ParamType.NONE:
+            return fed_params, rt_state.rt_cfg
+        
+        # retrain 
+        # retrain local for selected clients
+        if cid in rt_state.rt_cfg.selection:
+            fed_params.gate = param_state.gate or fed_params_list[cid].gate
+            fed_params.other = param_state.other or fed_params_list[cid].other
+
+        return fed_params, rt_state.rt_cfg  
 
 @dataclass
 class Cluster(RetrainStrategy):
@@ -324,7 +417,7 @@ class Cluster(RetrainStrategy):
     ) -> None:
         rt_state.is_cluster = True
 
-        fps = [obs.fingerprint for obs in obs_list if obs.fingerprint is not None]
+        fps = [obs.fingerprint for obs in obs_list]
         # AgglomerativeClustering requires at least 2 samples.
         if len(fps) >= 2:
             grp_state.update(fps)
@@ -333,7 +426,7 @@ class Cluster(RetrainStrategy):
     def on_trig(
         self,
         obs_list: List[Observation],
-        params_list: List[Params],
+        fed_params_list: List[FedParam],
         rt_state: RetrainState,
         grp_state: GroupState,
         param_state: FedParam,
@@ -365,30 +458,44 @@ class Cluster(RetrainStrategy):
                 rt_state.rt_cfg = RetrainConfig(False, [], ParamType.NONE)
                 logger.debug(f"Rt Cfg: {rt_state.rt_cfg}")
 
-        elif rt_state.stage == RetrainState.Stage.ONGOING:
-            # 2. 继续训练
-            # 2.1 聚合参数
-            aggregate(
-                params_list,
-                rt_state.rt_cfg,
-                grp_state,
-                param_state,
-            )
-
-            rt_state.remain_round -= 1
-
-        elif rt_state.stage == RetrainState.Stage.COMPLETED:
-            aggregate(
-                params_list,
-                rt_state.rt_cfg,
-                grp_state,
-                param_state,
-            )
-            rt_state.rt_cfg.trigger = False
-            logger.debug("Retraining ended.")
         else:
-            raise ValueError("Inconsistent retrain state.")
-        
+            grp_aggregate(
+                    [FedParam.merge(p) for p in fed_params_list],
+                    rt_state.rt_cfg.selection,
+                    grp_state,
+                )
+            if rt_state.stage == RetrainState.Stage.ONGOING:
+                rt_state.remain_round -= 1
+            elif rt_state.stage == RetrainState.Stage.COMPLETED:
+                rt_state.rt_cfg.trigger = False
+                logger.debug("Retraining ended.")
+
+    def res_trig(
+        self,
+        cid: int,
+        rt_state: RetrainState,
+        param_state: FedParam,
+        grp_state: GroupState,
+        fed_params_list: List[FedParam],
+    ) -> Tuple[FedParam, RetrainConfig]:
+        "return params need to retrain, "
+        assert rt_state.rt_cfg.param_type in [
+            ParamType.CLUSTER,
+            ParamType.NONE,
+        ], "Cluster only supports CLUSTER, NONE."
+
+        fed_params = FedParam()
+        if not rt_state.rt_cfg.trigger and rt_state.rt_cfg.param_type == ParamType.NONE:
+            return fed_params, rt_state.rt_cfg
+
+        if rt_state.rt_cfg.param_type == ParamType.CLUSTER:
+            # retrain local for selected clients
+            if cid in rt_state.rt_cfg.selection:
+                fed_params = (
+                    FedParam.separate(grp_state.get_group(cid).params)
+                    or fed_params_list[cid]
+                )
+        return fed_params, rt_state.rt_cfg
 @dataclass
 class Driftguard(RetrainStrategy):
     """Default retraining strategy based on reliance and group accuracy."""
@@ -403,7 +510,7 @@ class Driftguard(RetrainStrategy):
         grp_state: GroupState,
         rt_state: RetrainState,
     ) -> None:
-        fps = [obs.fingerprint for obs in obs_list if obs.fingerprint is not None]
+        fps = [obs.fingerprint for obs in obs_list]
         # AgglomerativeClustering requires at least 2 samples.
         if len(fps) >= 2:
             grp_state.update(fps)
@@ -412,7 +519,7 @@ class Driftguard(RetrainStrategy):
     def on_trig(
         self,
         obs_list: List[Observation],
-        params_list: List[Params],
+        fed_params_list: List[FedParam],
         rt_state: RetrainState,
         grp_state: GroupState,
         param_state: FedParam,
@@ -422,12 +529,11 @@ class Driftguard(RetrainStrategy):
         Args:
             context: Runtime retrain context to mutate.
             obs_list: Observations from all clients for the round.
-            params_list: Parameters uploaded by all clients.
+            fed_params_list: Parameters uploaded by all clients.
 
         Returns:
             None.
         """
-        rt_state = rt_state
         reliance = Observation.ave_reliance(obs_list)
         group_accs = Observation.group_ave_acc(obs_list, grp_state.groups)
         grps = [g for g, acc in group_accs if acc < self.thr_group_acc]
@@ -454,97 +560,71 @@ class Driftguard(RetrainStrategy):
                 rt_state.rt_cfg = RetrainConfig(False, [], ParamType.NONE)
                 logger.debug(f"Rt Cfg: {rt_state.rt_cfg}")
         
-        elif rt_state.stage == RetrainState.Stage.ONGOING:
+        else:
             # 2. 继续训练
-            # 2.1 聚合参数
-            aggregate(
-                params_list,
-                rt_state.rt_cfg,
-                grp_state,
-                param_state,
-            )
-            rt_state.remain_round -= 1
-            
-        elif rt_state.stage == RetrainState.Stage.COMPLETED:
-            aggregate(
-                params_list,
-                rt_state.rt_cfg,
-                grp_state,
-                param_state,
-            )
-            if rt_state.rt_cfg.param_type == ParamType.DG_FULL and grps:
-                # - 分组重训练
-                rt_state.rt_cfg = RetrainConfig(
-                    True, [c for g in grps for c in g.clients], ParamType.DG_PARTIAL
+            gate_params_list = [fed_params.gate for fed_params in fed_params_list]
+            param_state.gate = aggregate_params(gate_params_list)
+            if rt_state.rt_cfg.param_type == ParamType.DG_PARTIAL:
+                local_params_list = [fed_params.local for fed_params in fed_params_list]
+                grp_aggregate(
+                    local_params_list,
+                    rt_state.rt_cfg.selection,
+                    grp_state,
                 )
-                rt_state.remain_round = rt_state._rt_round
-                logger.info(f"DG_FULL_COMPLETED Trig partial: {rt_state.rt_cfg}")
-            else:
+            elif rt_state.rt_cfg.param_type == ParamType.DG_FULL:
+                other_params_list = [fed_params.other for fed_params in fed_params_list] 
+                param_state.other = aggregate_params(other_params_list)
+
+            # 3. 更新状态
+            if rt_state.stage == RetrainState.Stage.ONGOING:
+                rt_state.remain_round -= 1
+            elif rt_state.stage == RetrainState.Stage.COMPLETED:
                 rt_state.rt_cfg.trigger = False
                 logger.debug("Retraining ended.")
-        else:
-            raise ValueError("Inconsistent retrain state.")
-    
-def aggregate(
-    params_list: List[Params],
-    rt_cfg: RetrainConfig,
+
+    def res_trig(
+        self,
+        cid: int,
+        rt_state: RetrainState,
+        param_state: FedParam,
+        grp_state: GroupState,
+        fed_params_list: List[FedParam],
+    ) -> Tuple[FedParam, RetrainConfig]:
+        "return params need to retrain, "
+        assert rt_state.rt_cfg.param_type in [
+            ParamType.DG_FULL,
+            ParamType.DG_PARTIAL,
+            ParamType.NONE,
+        ], "Driftguard only supports DG_FULL, DG_PARTIAL, and NONE."
+        # blank for no retrain
+        fed_params = FedParam()
+        if not rt_state.rt_cfg.trigger and rt_state.rt_cfg.param_type == ParamType.NONE:
+            return fed_params, rt_state.rt_cfg
+        
+        # retrain
+        fed_params.gate = (
+            param_state.gate or fed_params_list[cid].gate
+        )  # always retrain gate
+
+        if rt_state.rt_cfg.param_type == ParamType.DG_PARTIAL:
+            # retrain local for selected clients
+            if cid in rt_state.rt_cfg.selection:
+                fed_params.local = grp_state.get_group(cid).params or fed_params_list[cid].local
+        elif rt_state.rt_cfg.param_type == ParamType.DG_FULL:
+            fed_params.other = param_state.other or fed_params_list[cid].other
+        
+        return fed_params, rt_state.rt_cfg
+        
+def grp_aggregate(
+    params_list: List[Params], # List of client parameters
+    sel_clients: List[int],
     grp_state: GroupState,
-    param_state: FedParam,
-    sel_clients: List[int] | None = None,
 ) -> None:
-    # 2.1 聚合参数
-    if rt_cfg.param_type == ParamType.DG_PARTIAL or rt_cfg.param_type == ParamType.CLUSTER:
-        assert rt_cfg.selection, "need selection"
-        grps = grp_state.unique_groups(
-            rt_cfg.selection
+    # 聚合组内参数
+    # 更新组内参数
+    grps = grp_state.unique_groups(sel_clients)
+    for g in grps:
+        g.params = aggregate_params(
+            [params_list[c] for c in g.clients if c in sel_clients]
         )
-        for g in grps:
-            # 更新组内参数
-            g.params = aggregate_params(
-                [params_list[c] for c in g.clients if c in rt_cfg.selection]
-            )
-    # 2.2 全局训练
-    elif rt_cfg.param_type == ParamType.DG_FULL:
-        if sel_clients is not None:
-            params = aggregate_params(
-                [params_list[i] for i in range(len(params_list)) if i in sel_clients]
-            )
-        else:
-            params = aggregate_params(params_list)
-        param_state.dg_shared = params
-        # assert FedParam.LOCAL_SIZE != 0, "LOCAL_SIZE not set"
-        # local_params_list, shared_params_list = (
-        #     [params[: FedParam.LOCAL_SIZE] for params in params_list],
-        #     [params[FedParam.LOCAL_SIZE :] for params in params_list],
-        # )
-        # # local
-        # assert rt_cfg.selection, "need selection"
-        # grps = grp_state.unique_groups(
-        #     rt_cfg.selection
-        # )
-        # for g in grps:
-        #     # 更新组内参数
-        #     g.params = aggregate_params(
-        #         [local_params_list[c] for c in g.clients if c in rt_cfg.selection]
-        #     )
-        # # shared
-        # param_state.dg_shared = aggregate_params(shared_params_list)
-    elif rt_cfg.param_type == ParamType.FULL:
-        if sel_clients is not None:
-            params = aggregate_params(
-                [params_list[i] for i in range(len(params_list)) if i in sel_clients]
-            )
-        else:
-            params = aggregate_params(params_list)
-        param_state.full = params
-    elif rt_cfg.param_type == ParamType.MOE:
-        if sel_clients is not None:
-            params = aggregate_params(
-                [params_list[i] for i in range(len(params_list)) if i in sel_clients]
-            )
-        else:
-            params = aggregate_params(params_list)
-        param_state.moe_shared = params
-    else:
-        raise ValueError(f"Unknown param type: {rt_cfg.param_type}")
         

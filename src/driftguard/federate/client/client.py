@@ -9,7 +9,7 @@ from driftguard.federate.observation import Fp, Observation
 from driftguard.federate.params import FedParam, ParamType, Params
 from driftguard.model.dataset import ListDataset, get_inference_transform, get_train_transform
 from driftguard.model.training.trainer import Trainer
-from driftguard.model.utils import get_trainable_params
+from driftguard.model.utils import freeze_layer, get_trainable_params
 from driftguard.rpc.proxy import DataServiceProxy, ServerProxy
 
 from typing import Any, Callable, Optional, Tuple, List, Dict, Deque
@@ -60,46 +60,45 @@ class FedClient:
 
             # step 2. upload observations, update local params
             obs = self.inference(samples)
-            params, param_type = self.s_proxy.req_upload_obs((self.cid, obs))
-            if params and param_type:
-                FedParam.set(self.model, params, param_type)
+            fed_params,  = self.s_proxy.req_upload_obs((self.cid, obs))
+            # set params
+            fed_params.set(self.model)
 
+            self.recorder.update_acc(time_step, obs.accuracy) 
             # step 3. trigger retrain if needed
             obs = self.inference(samples) #
-            self.recorder.update_acc(time_step, obs.accuracy)    
+            # self.recorder.update_acc(time_step, obs.accuracy)    
 
-            params = []
+            train_sets, val_sets = [*self._buffer, *samples[:-10]], samples[-10:]
             while True:
-                params, rt_cfg = self.s_proxy.req_trig((self.cid, obs, params))
-                train_sets, val_sets = [*self._buffer, *samples[:-10]], samples[-10:]
-
                 FedParam.unfreeze(self.model)
-
+                # request 3 req_trig
+                fed_params, rt_cfg = self.s_proxy.req_trig(
+                    (self.cid, obs, FedParam.get(self.model))
+                )
+                fed_params.set(self.model) # 更新参数
+                
                 # 1. stop
                 if not rt_cfg.trigger:
-                    if self.cid in rt_cfg.selection and rt_cfg.param_type and params:
-                        # logger.info(f"[Retrain Stop] cid: {self.cid}, time_step: {time_step}, rt_cfg: {rt_cfg}")
-                        FedParam.set(self.model, params, rt_cfg.param_type)
-                        # 训练gate
-                        FedParam.freeze_exclude(self.model, ParamType._GATE)
-                        self.train(train_sets, val_sets, time_step)
                     break
-                # 2. not selected
-                if self.cid not in rt_cfg.selection:
-                    continue
+                
+                # 2. no params need to retrain
+                if not fed_params.gate:
+                    freeze_layer(self.model, include_names=["gate"])
+                if not fed_params.local:
+                    freeze_layer(self.model, include_names=["local"])
+                if not fed_params.other:
+                    freeze_layer(self.model, include_names=["local", "gate"], exclude=True)
                 # 3. 进入训练, 可以没有参数 e.g. 新组 使用原有参数
-                if params: 
-                    FedParam.set(self.model, params, rt_cfg.param_type)
-                
-                FedParam.freeze_exclude(self.model, rt_cfg.param_type)
-                FedParam.unfreeze(self.model, ["gate"])
-                
+                if get_trainable_params(self.model) == 0:
+                    logger.debug(f"{self.cid} No parameters to retrain, skip training.")
+                    continue
+                                
                 self.train(train_sets, val_sets, time_step)
 
-                params = FedParam.get(self.model, rt_cfg.param_type)
-                
+            # one step done, update buffer
             self._buffer = samples[-10:]
-
+        # all steps done
         self.recorder.record(self.cid)
 
     def inference(self, samples: List[Tuple[bytes, int]]) -> Observation:

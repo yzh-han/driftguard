@@ -1,5 +1,5 @@
 from driftguard.federate.observation import Observation
-from driftguard.federate.params import ParamType, Params
+from driftguard.federate.params import FedParam, ParamType, Params
 from driftguard.federate.retrain_config import RetrainConfig
 from driftguard.rpc.rpc import Node, RPCClient
 from typing import Any, Callable, Optional, Tuple, List, Dict
@@ -55,7 +55,7 @@ class ServerProxy:
 
         return req_adv_step(args)
     
-    def req_upload_obs(self, args: Tuple[int, Observation]) -> Tuple[Params, ParamType]:
+    def req_upload_obs(self, args: Tuple[int, Observation]) -> Tuple[FedParam,]:
         """
         (client_id, obs) -> (params,)
         """
@@ -65,7 +65,7 @@ class ServerProxy:
 
         return req_upload_obs(args)
     
-    def req_trig(self, args: Tuple[int, Observation, Params]) -> Tuple[Params, RetrainConfig]:
+    def req_trig(self, args: Tuple[int, Observation, FedParam]) -> Tuple[FedParam, RetrainConfig]:
         """
         (client_id, obs) -> None
         """

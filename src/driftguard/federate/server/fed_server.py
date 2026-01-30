@@ -90,69 +90,62 @@ class FedServer:
         return (self._time_step,)
 
     @server_func
-    def req_upload_obs(self, args: Tuple[int, Observation]) -> Tuple[Params, ParamType]:
+    def req_upload_obs(self, args: Tuple[int, Observation]) -> Tuple[FedParam,]:
         """Return group parameters, or empty if no groups."""
         cid, obs = args
         # store observation
 
         def on_obs(obs_list: List[Observation], grp_state: GroupState, rt_state: RetrainState) -> None:
             self.rt_strategy.on_obs(obs_list, grp_state, rt_state)
-            logger.info(f"[Ave Acc] {sum(o.accuracy for o in obs_list)/len(obs_list):.4f}")
+            logger.info(f"-* [Ave Acc 1] *-  {sum(o.accuracy for o in obs_list)/len(obs_list):.4f}")
             logger.info(
                 f"[Groups] {[f'{g}: {acc:.2f}' for g, acc in Observation.group_ave_acc(obs_list, grp_state.groups)]}"
             )
         self._sync.await_upload_obs(cid, on_obs, obs, self.grp_state, self.rt_state)
         
-        params, param_type = [], ParamType.NONE
+        fed_params = FedParam()
         if self.grp_state.groups: # has groups
-            params = self.grp_state.get_group(cid).params
-            param_type = ParamType.CLUSTER if self.rt_state.is_cluster else ParamType.DG_PARTIAL
+            if len(self.grp_state.get_group(cid).params) == FedParam.LOCAL_SIZE:
+                fed_params.local = self.grp_state.get_group(cid).params
+            else:
+                fed_params = FedParam.separate(self.grp_state.get_group(cid).params)
 
-        return params, param_type
+        return fed_params,
 
     @server_func
-    def req_trig(self, args: Tuple[int, Observation, Params]) -> Tuple[Params, RetrainConfig]:
-        cid, obs, params = args
-
+    def req_trig(self, args: Tuple[int, Observation, FedParam]) -> Tuple[FedParam, RetrainConfig]:
+        cid, obs, fed_params = args
+        
+        current_fed_params_list: List[FedParam] = []
         def on_trig(
             obs_list: List[Observation],
-            params_list: List[Params],
+            fed_params_list: List[FedParam],
             rt_state: RetrainState,
             grp_state: GroupState,
             param_state: FedParam,
         ) -> None:
-            self.rt_strategy.on_trig(obs_list, params_list, rt_state, grp_state, param_state)
+            logger.info(f"-* [Ave Acc 2] *- {sum(o.accuracy for o in obs_list)/len(obs_list):.4f}")
+            logger.info(
+                f"[Groups 2] {[f'{g}: {acc:.2f}' for g, acc in Observation.group_ave_acc(obs_list, grp_state.groups)]}"
+            )
+            current_fed_params_list.extend(fed_params_list)
+            self.rt_strategy.on_trig(obs_list, fed_params_list, rt_state, grp_state, param_state)
             logger.info(f"[Retrain Trigger] rt_cfg: {rt_state.rt_cfg}, retrain: {rt_state.remain_round}")
 
-        self._sync.await_trig(cid, on_trig, obs, params, self.rt_state, self.grp_state, self.param_state)
+        self._sync.await_trig(cid, on_trig, obs, fed_params, self.rt_state, self.grp_state, self.param_state)
 
-        params = []
-        # 第一轮全部重训
-        # if self._time_step == 1 and self.rt_state.rt_cfg.param_type != ParamType.FULL:
-        #     self.rt_state.rt_cfg.selection = self.grp_state.all_clients
-        #     self.rt_state.rt_cfg.param_type = ParamType.FULL
-
-        if self.rt_state.rt_cfg.param_type == ParamType.DG_FULL:
-            params = self.param_state.dg_shared
-            # params = (
-            #     [*self.grp_state.get_group(cid).params, *self.param_state.dg_shared]
-            #     if self.grp_state.get_group(cid).params
-            #     else []
-            # )
-        elif (
-            self.rt_state.rt_cfg.param_type == ParamType.DG_PARTIAL
-            or self.rt_state.rt_cfg.param_type == ParamType.CLUSTER
-        ):
-            params = self.grp_state.get_group(cid).params
-        elif (
-            self.rt_state.rt_cfg.param_type == ParamType.FULL
-        ):
-            params = self.param_state.full
-        elif self.rt_state.rt_cfg.param_type == ParamType.MOE:
-            params = self.param_state.moe_shared
-        else:
-            pass
-        return params, self.rt_state.rt_cfg  # placeholder
+        assert len(current_fed_params_list) == self.grp_state._num_clients, (
+            "Mismatch in collected fed_params."
+        )
+        res_fed_params, rt_cfg = self.rt_strategy.res_trig(
+            cid,
+            self.rt_state,
+            self.param_state,
+            self.grp_state,
+            current_fed_params_list,
+            )
+       
+        return res_fed_params, rt_cfg  # placeholder
  
 def start_fed_server(
     node: Node, args: FedServerArgs

@@ -26,19 +26,30 @@ class ParamType(Enum):
 @dataclass
 class FedParam:
     LOCAL_SIZE: ClassVar[int] = 0
+    GATE_SIZE: ClassVar[int] = 0
+    OTHER_SIZE: ClassVar[int] = 0
     # 实例变量
-    dg_shared: Params = field(default_factory=list)
+    gate: Params = field(default_factory=list)
     local: Params = field(default_factory=list)
-    full: Params = field(default_factory=list)
-    moe_shared: Params = field(default_factory=list)
-
+    other: Params = field(default_factory=list)
+    # dg_shared: Params = field(default_factory=list)
+    # dg_gate: Params = field(default_factory=list)
+    # local: Params = field(default_factory=list)
+    # full: Params = field(default_factory=list)
+    # moe_shared: Params = field(default_factory=list)
+    def is_empty(self) -> bool:
+        return not (self.gate or self.local or self.other)
     @staticmethod
     def freeze_exclude(model: nn.Module, param_type: ParamType) -> None:
+        # Driftguare
         if param_type == ParamType.DG_FULL:
+            # keep oters, gate, freeze local
             freeze_layer(model, include_names=["local"])
             pass
         elif param_type == ParamType.DG_PARTIAL:
-            freeze_layer(model, include_names=["local"], exclude= True)
+            # keep local, gate freeze others
+            freeze_layer(model, include_names=["local", "gate"], exclude= True)
+        # FedAvg, PFL, Cluster
         elif param_type == ParamType.FULL or param_type == ParamType.CLUSTER or param_type == ParamType.MOE:
             pass
         elif param_type == ParamType._GATE:
@@ -52,44 +63,92 @@ class FedParam:
         else:
             unfreeze_layer(model)
 
+    def set(self, model: nn.Module)-> None:
+        """Set model parameters from FedParam instance."""
+        if self.gate:
+            set_params(model, self.gate, names=["gate"])
+        if self.local:
+            set_params(model, self.local, names=["local"])
+        if self.other:
+            set_params(model, self.other, names=["local", "gate"], exclude=True)
+    # @staticmethod
+    # def set(model: nn.Module, params: Params, param_type: ParamType) -> None:
+    #     if param_type == ParamType.DG_FULL:
+    #         set_params(model, params, names=["local"], exclude=True)
+    #         # len_local = FedParam.LOCAL_SIZE or len(
+    #         #     FedParam.get(model, ParamType.DG_PARTIAL)
+    #         # )
+    #         # local, shared = params[:len_local], params[len_local:]
+    #         # set_params(model, local, names=["local"])
+    #         # if shared:
+    #             # set_params(model, shared, names=["local", "gate"], exclude=True)
+    #     elif param_type == ParamType.MOE:
+    #         set_params(model, params, names=["local"], exclude=True)
+    #     elif param_type == ParamType.DG_PARTIAL:
+    #         gate_params, local_params = (
+    #             params[: FedParam.GATE_SIZE],
+    #             params[FedParam.GATE_SIZE :],
+    #         )
+    #         set_params(model, gate_params, names=["gate"])
+    #         set_params(model, local_params, names=["local"])
+    #     elif param_type == ParamType.FULL or param_type == ParamType.CLUSTER:
+    #         set_params(model, params)
+    #     else:
+    #         raise ValueError(f"Unknown param_type: {param_type}")
     @staticmethod
-    def set(model: nn.Module, params: Params, param_type: ParamType) -> None:
-        if param_type == ParamType.DG_FULL:
-            set_params(model, params, names=["local"], exclude=True)
-            # len_local = FedParam.LOCAL_SIZE or len(
-            #     FedParam.get(model, ParamType.DG_PARTIAL)
-            # )
-            # local, shared = params[:len_local], params[len_local:]
-            # set_params(model, local, names=["local"])
-            # if shared:
-                # set_params(model, shared, names=["local", "gate"], exclude=True)
-        elif param_type == ParamType.MOE:
-            set_params(model, params, names=["local"], exclude=True)
-        elif param_type == ParamType.DG_PARTIAL:
-            set_params(model, params, names=["local"])
-        elif param_type == ParamType.FULL or param_type == ParamType.CLUSTER:
-            set_params(model, params)
-        else:
-            raise ValueError(f"Unknown param_type: {param_type}")
+    def get(model: nn.Module) -> FedParam:
+        gate_params = get_params(model, names=["gate"])
+        local_params = get_params(model, names=["local"])
+        other_params = get_params(model, names=["local", "gate"], exclude=True)
+        if not FedParam.GATE_SIZE:
+            FedParam.GATE_SIZE = len(gate_params)
+        if not FedParam.LOCAL_SIZE:
+            FedParam.LOCAL_SIZE = len(local_params)
+        if not FedParam.OTHER_SIZE:
+            FedParam.OTHER_SIZE = len(other_params)
+        return FedParam(gate=gate_params, local=local_params, other=other_params)
+    # @staticmethod
+    # def get(model: nn.Module, param_type: ParamType, trig: bool = True) -> Params:
+    #     if param_type == ParamType.DG_FULL: 
+    #         return get_params(model, names=["local"], exclude=True)
+    #         # return get_params(model, names=["local", "gate"], exclude=True)
+    #         # local = get_params(model, names=["local"])
+    #         # shared = get_params(model, names=["local", "gate"], exclude=True)
+    #         # return [*local, *shared]
+    #     elif param_type == ParamType.DG_PARTIAL:
+    #         # return [gate, local]
+    #         if FedParam.GATE_SIZE == 0:
+    #             FedParam.GATE_SIZE = len(get_params(model, names=["gate"]) )
+    #         gate_params = get_params(model, names=["gate"])
+    #         local_params = get_params(model, names=["local"]) if trig else []
+    #         return [
+    #             *gate_params,
+    #             *local_params,
+    #         ]
+    #     elif param_type == ParamType.MOE:
+    #         return get_params(model, names=["local"], exclude=True)
+    #         # return get_params(model, names=["local", "gate"], exclude=True)
+    #     elif param_type == ParamType.FULL or param_type == ParamType.CLUSTER:
+    #         return get_params(model)
+    #     else:
+    #         raise ValueError(f"Unknown param_type: {param_type}")
+    def merge(self) -> Params:
+        """Merge all params into a single list."""
+        assert self.gate and self.local and self.other, "FedParam merge: missing params"
+        return [*self.gate, *self.local, *self.other]
     @staticmethod
-    def get(model: nn.Module, param_type: ParamType) -> Params:
-        if param_type == ParamType.DG_FULL: 
-            return get_params(model, names=["local"], exclude=True)
-            # return get_params(model, names=["local", "gate"], exclude=True)
-            # local = get_params(model, names=["local"])
-            # shared = get_params(model, names=["local", "gate"], exclude=True)
-            # return [*local, *shared]
-        elif param_type == ParamType.MOE:
-            return get_params(model, names=["local"], exclude=True)
-            # return get_params(model, names=["local", "gate"], exclude=True)
-        elif param_type == ParamType.DG_PARTIAL:
-            if FedParam.LOCAL_SIZE == 0:
-                FedParam.LOCAL_SIZE = len( get_params(model, names=["local"]) )
-            return get_params(model, names=["local"])
-        elif param_type == ParamType.FULL or param_type == ParamType.CLUSTER:
-            return get_params(model)
-        else:
-            raise ValueError(f"Unknown param_type: {param_type}")
+    def separate(params: Params) -> FedParam:
+        """Separate a single list of params into a FedParam instance."""
+        assert FedParam.GATE_SIZE and FedParam.LOCAL_SIZE and FedParam.OTHER_SIZE, (
+            "FedParam separate: size not set"
+        )
+        assert len(params) == (
+            FedParam.GATE_SIZE + FedParam.LOCAL_SIZE + FedParam.OTHER_SIZE
+        ), "FedParam separate: mismatched length"
+        gate = params[: FedParam.GATE_SIZE]
+        local = params[FedParam.GATE_SIZE : FedParam.GATE_SIZE + FedParam.LOCAL_SIZE]
+        other = params[FedParam.GATE_SIZE + FedParam.LOCAL_SIZE :]
+        return FedParam(gate=gate, local=local, other=other)
 
 def aggregate_params(params_list: List[Params], sample_sizes: List[int] = []) -> Params:
     """Aggregate model parameters (FedAvg)."""
