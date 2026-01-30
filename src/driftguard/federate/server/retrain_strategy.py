@@ -505,6 +505,8 @@ class Driftguard(RetrainStrategy):
     name: str = "driftguard"
     
     def __post_init__(self):
+        self.thr_sha_acc: float = self.thr_group_acc * 0.95
+
         self.act_gate: bool = False
         self.act_local: bool = False
         self.act_other: bool = False
@@ -541,14 +543,16 @@ class Driftguard(RetrainStrategy):
             None.
         """
         reliance = Observation.ave_reliance(obs_list)
+        ave_acc = mean([obs.accuracy for obs in obs_list])
         group_accs = Observation.group_ave_acc(obs_list, grp_state.groups)
         grps = [g for g, acc in group_accs if acc < self.thr_group_acc]
 
-        logger.info(f"Reliance: {reliance:.2f}")
+        logger.info(f"Reliance: {reliance:.2f}, Ave Acc: {ave_acc:.2f}")
 
         if rt_state.stage == RetrainState.Stage.IDLE:
             # 1. 开始
-            if reliance < self.thr_reliance or self.is_first_step:
+            # if reliance < self.thr_reliance or self.is_first_step:
+            if ave_acc < self.thr_sha_acc or self.is_first_step:
                 self.is_first_step = False
                 self.act_other = True
                 self.act_gate = True
@@ -625,9 +629,11 @@ class Driftguard(RetrainStrategy):
 
         if self.act_local:
             # retrain local for selected clients
-            if rt_state.remain_round == 0:
-                pass
-            elif cid in rt_state.rt_cfg.selection:
+            # if rt_state.remain_round == 0:
+            #     pass
+            # elif cid in rt_state.rt_cfg.selection:
+            #     fed_params.local = grp_state.get_group(cid).params or fed_params_list[cid].local
+            if cid in rt_state.rt_cfg.selection:
                 fed_params.local = grp_state.get_group(cid).params or fed_params_list[cid].local
         if self.act_other:
             fed_params.other = param_state.other or fed_params_list[cid].other
