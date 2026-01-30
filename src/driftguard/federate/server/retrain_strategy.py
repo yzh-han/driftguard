@@ -570,9 +570,6 @@ class Driftguard(RetrainStrategy):
                 logger.debug(f"Rt Cfg: {rt_state.rt_cfg}")
             else:
                 # - 不重训练 keep cfg
-                self.act_gate = False
-                self.act_local = False
-                self.act_other = False
                 rt_state.rt_cfg = RetrainConfig(False, [], ParamType.NONE)
                 logger.debug(f"Rt Cfg: {rt_state.rt_cfg}")
         
@@ -595,6 +592,9 @@ class Driftguard(RetrainStrategy):
             if rt_state.stage == RetrainState.Stage.ONGOING:
                 rt_state.remain_round -= 1
             elif rt_state.stage == RetrainState.Stage.COMPLETED:
+                self.act_gate = False
+                self.act_local = False
+                self.act_other = False
                 rt_state.rt_cfg.trigger = False
                 logger.debug("Retraining ended.")
 
