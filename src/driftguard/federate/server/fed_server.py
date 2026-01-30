@@ -126,12 +126,14 @@ class FedServer:
         ) -> None:
             # 闭包 获取所有客户端的 fed_params
             current_fed_params_list.extend(fed_params_list)
+            print(f"len inner: {len(current_fed_params_list)}")
 
             self.rt_strategy.on_trig(obs_list, fed_params_list, rt_state, grp_state, param_state)
             logger.info(f"[Retrain Trigger] rt_cfg: {rt_state.rt_cfg}, retrain: {rt_state.remain_round}")
 
         self._sync.await_trig(cid, on_trig, obs, fed_params, self.rt_state, self.grp_state, self.param_state)
 
+        print(f"len external: {len(current_fed_params_list)}")
         assert len(current_fed_params_list) == self.grp_state._num_clients, (
             "Mismatch in collected fed_params."
         )
