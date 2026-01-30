@@ -104,11 +104,11 @@ class FedServer:
         self._sync.await_upload_obs(cid, on_obs, obs, self.grp_state, self.rt_state)
         
         fed_params = FedParam()
-        if self.grp_state.groups: # has groups
-            if len(self.grp_state.get_group(cid).params) == FedParam.LOCAL_SIZE:
-                fed_params.local = self.grp_state.get_group(cid).params
-            else:
-                fed_params = FedParam.separate(self.grp_state.get_group(cid).params)
+        # if self.grp_state.groups: # has groups
+        #     if len(self.grp_state.get_group(cid).params) == FedParam.LOCAL_SIZE:
+        #         fed_params.local = self.grp_state.get_group(cid).params
+        #     else:
+        #         fed_params = FedParam.separate(self.grp_state.get_group(cid).params)
 
         return fed_params,
 

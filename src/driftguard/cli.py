@@ -123,11 +123,11 @@ def main() -> None:
     for exp in exps:
         print("\n\n")
         logger.info(f"[Experiment]: {exp.name}, Dataset: {exp.dataset.name}, Model: {exp.model.value}, Strategy: {exp.strategy.name}")
-        cluster_thr = 0.15 # <--------------------
+        cluster_thr, min_group_size = 0.15, 2 # <--------------------
         clustr = str(cluster_thr).split('.')[0] + str(cluster_thr).split('.')[-1]
         cfg = LaunchConfig(
             # exp_root=f"exp/ablation_{exp.strategy.name}",
-            exp_root=f"exp/{exp.strategy.name}_clu{clustr}",
+            exp_root=f"exp/{exp.strategy.name}_clu{clustr}_mgsize{min_group_size}",
             exp_name=exp.name,
             # data service
             sample_size_per_step = 30,
@@ -143,7 +143,7 @@ def main() -> None:
             rt_round=5, # communication rounds <--------------------
             strategy= exp.strategy,
             cluster_thr = cluster_thr, # 0.3,  # <--------------------
-            min_group_size = 3,
+            min_group_size = min_group_size,
             data_port=exp.strategy.data_port, # <--------------------
             server_port=exp.strategy.server_port # <--------------------
         )

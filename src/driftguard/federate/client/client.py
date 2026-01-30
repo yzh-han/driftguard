@@ -60,7 +60,7 @@ class FedClient:
 
             # step 2. upload observations, update local params
             obs = self.inference(samples)
-            fed_params,  = self.s_proxy.req_upload_obs((self.cid, obs))
+            _, = self.s_proxy.req_upload_obs((self.cid, obs))
             # set params
             # fed_params.set(self.model)
 
