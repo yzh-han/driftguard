@@ -610,6 +610,7 @@ class Driftguard(RetrainStrategy):
         assert rt_state.rt_cfg.param_type in [
             ParamType.DG_FULL,
             ParamType.DG_PARTIAL,
+            ParamType.DG_TOGETHER,
             ParamType.NONE,
         ], "Driftguard only supports DG_FULL, DG_PARTIAL, and NONE."
         # blank for no retrain
