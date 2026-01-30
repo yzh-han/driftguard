@@ -15,6 +15,7 @@ class ParamType(Enum):
     """Parameter names used for retraining aggregation."""
     DG_FULL = "dg_full"
     DG_PARTIAL = "dg_partial"
+    DG_TOGETHER = "dg_together"
     FULL = "full"
     CLUSTER = "cluster"
     MOE = "moe"

@@ -503,6 +503,12 @@ class Driftguard(RetrainStrategy):
     thr_group_acc: float = 0.65
 
     name: str = "driftguard"
+    
+    def __post_init__(self):
+        self.act_gate: bool = False
+        self.act_local: bool = False
+        self.act_other: bool = False
+        self.is_first_step: bool = True
 
     def on_obs(
         self,
@@ -542,21 +548,31 @@ class Driftguard(RetrainStrategy):
 
         if rt_state.stage == RetrainState.Stage.IDLE:
             # 1. 开始
-            if reliance < self.thr_reliance:
+            if reliance < self.thr_reliance or self.is_first_step:
+                self.is_first_step = False
+                self.act_other = True
+                self.act_gate = True
                 rt_state.rt_cfg = RetrainConfig(True, grp_state.all_clients, ParamType.DG_FULL)
                 
                 rt_state.remain_round = rt_state._rt_round
                 logger.debug(f"Rt Cfg: {rt_state.rt_cfg}")
                 
-            elif grps:
+            if grps:
                 # - 分组重训练
+                self.act_local = True
+                self.act_gate = True
                 rt_state.rt_cfg = RetrainConfig(
-                    True, [c for g in grps for c in g.clients], ParamType.DG_PARTIAL
+                    True,
+                    [c for g in grps for c in g.clients],
+                    ParamType.DG_PARTIAL if not self.act_other else ParamType.DG_TOGETHER
                 )
                 rt_state.remain_round = rt_state._rt_round
                 logger.debug(f"Rt Cfg: {rt_state.rt_cfg}")
             else:
                 # - 不重训练 keep cfg
+                self.act_gate = False
+                self.act_local = False
+                self.act_other = False
                 rt_state.rt_cfg = RetrainConfig(False, [], ParamType.NONE)
                 logger.debug(f"Rt Cfg: {rt_state.rt_cfg}")
         
@@ -564,14 +580,14 @@ class Driftguard(RetrainStrategy):
             # 2. 继续训练
             gate_params_list = [fed_params.gate for fed_params in fed_params_list]
             param_state.gate = aggregate_params(gate_params_list)
-            if rt_state.rt_cfg.param_type == ParamType.DG_PARTIAL:
+            if self.act_local:
                 local_params_list = [fed_params.local for fed_params in fed_params_list]
                 grp_aggregate(
                     local_params_list,
                     rt_state.rt_cfg.selection,
                     grp_state,
                 )
-            elif rt_state.rt_cfg.param_type == ParamType.DG_FULL:
+            if self.act_other:
                 other_params_list = [fed_params.other for fed_params in fed_params_list] 
                 param_state.other = aggregate_params(other_params_list)
 
@@ -606,13 +622,13 @@ class Driftguard(RetrainStrategy):
             param_state.gate or fed_params_list[cid].gate
         )  # always retrain gate
 
-        if rt_state.rt_cfg.param_type == ParamType.DG_PARTIAL:
+        if self.act_local:
             # retrain local for selected clients
             if rt_state.remain_round == 0:
                 pass
             elif cid in rt_state.rt_cfg.selection:
                 fed_params.local = grp_state.get_group(cid).params or fed_params_list[cid].local
-        elif rt_state.rt_cfg.param_type == ParamType.DG_FULL:
+        if self.act_other:
             fed_params.other = param_state.other or fed_params_list[cid].other
         
         return fed_params, rt_state.rt_cfg

@@ -111,8 +111,8 @@ exps = Exps(
         # MoEPerC(thr_acc=0.65, data_port=11401, server_port=11402),
         # Cluster(thr_acc=0.65, data_port=11501, server_port=11502),
         # Driftguard(thr_reliance=0.35, thr_group_acc=0.65, data_port=11701, server_port=11702, name="reliance_35"),
-        Driftguard(thr_reliance=0.25, thr_group_acc=0.65, data_port=11601, server_port=11602, name="Dri_rel25"),
-        # Driftguard(thr_reliance=0.3, thr_group_acc=0.65, data_port=12801, server_port=12802, name="rel_30"),
+        # Driftguard(thr_reliance=0.25, thr_group_acc=0.65, data_port=11601, server_port=11602, name="Dri_rel25"),
+        Driftguard(thr_reliance=0.3, thr_group_acc=0.65, data_port=12801, server_port=12802, name="DRI_rel30"),
         # Driftguard(thr_reliance=0.4, thr_group_acc=0.65, data_port=11901, server_port=11902, name="reliance_40"),
     ],
     device = "cuda:1" if torch.cuda.is_available() else "cpu", # <--------------------
@@ -123,7 +123,7 @@ def main() -> None:
     for exp in exps:
         print("\n\n")
         logger.info(f"[Experiment]: {exp.name}, Dataset: {exp.dataset.name}, Model: {exp.model.value}, Strategy: {exp.strategy.name}")
-        cluster_thr = 0.2 # <--------------------
+        cluster_thr = 0.15 # <--------------------
         clustr = str(cluster_thr).split('.')[0] + str(cluster_thr).split('.')[-1]
         cfg = LaunchConfig(
             # exp_root=f"exp/ablation_{exp.strategy.name}",
