@@ -96,15 +96,15 @@ exps = Exps(
     datasets=[
         # DATASET.DG5, 
         DATASET.PACS, 
-        DATASET.DDN
+        # DATASET.DDN
     ],
     models=[
         # MODEL.CRST_S, 
         MODEL.CRST_M, 
-        MODEL.CVIT
+        # MODEL.CVIT
     ],
     strategies=[
-        Never(),
+        # Never(),
         AveTrig(thr_acc=0.6, data_port=11101, server_port=11102),
         PerCTrig(thr_acc=0.6, data_port=11201, server_port=11202),
         MoEAve(thr_acc=0.6, data_port=11301, server_port=11302),
