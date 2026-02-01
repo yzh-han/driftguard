@@ -94,22 +94,22 @@ def build_client(cid: int, cfg: LaunchConfig) -> FedClient:
 #######################################
 exps = Exps(
     datasets=[
-        # DATASET.DG5, 
+        DATASET.DG5, 
         DATASET.PACS, 
-        # DATASET.DDN
+        DATASET.DDN
     ],
     models=[
         # MODEL.CRST_S, 
-        MODEL.CRST_M, 
-        # MODEL.CVIT
+        # MODEL.CRST_M, 
+        MODEL.CVIT
     ],
     strategies=[
         # Never(),
-        # AveTrig(thr_acc=0.6, data_port=11101, server_port=11102),
-        # PerCTrig(thr_acc=0.6, data_port=11201, server_port=11202),
-        # MoEAve(thr_acc=0.6, data_port=11301, server_port=11302),
-        # MoEPerC(thr_acc=0.6, data_port=11401, server_port=11402),
-        # Cluster(thr_acc=0.6, data_port=11501, server_port=11502),
+        AveTrig(thr_acc=0.6, data_port=11101, server_port=11102),
+        PerCTrig(thr_acc=0.6, data_port=11201, server_port=11202),
+        MoEAve(thr_acc=0.6, data_port=11301, server_port=11302),
+        MoEPerC(thr_acc=0.6, data_port=11401, server_port=11402),
+        Cluster(thr_acc=0.6, data_port=11501, server_port=11502),
         Driftguard(thr_group_acc=0.6, data_port=11601, server_port=11602),
         # Driftguard(thr_reliance=0.35, thr_group_acc=0.65, data_port=11701, server_port=11702, name="reliance_35"),
         # Driftguard(thr_reliance=0.25, thr_group_acc=0.65, data_port=11601, server_port=11602, name="Dri_rel25"),
@@ -129,7 +129,8 @@ def main() -> None:
         cfg = LaunchConfig(
             # exp_root=f"exp/ablation_{exp.strategy.name}",
             # exp_root=f"exp/{exp.strategy.name}_clu{clustr}_mgsize{min_group_size}",
-            exp_root="exp/main_acc60",
+            # exp_root="exp/main_acc60",
+            exp_root=f"exp/new_main/{exp.dataset.name}-{exp.model.value}",
             exp_name=exp.name,
             # data service
             sample_size_per_step = 30,
