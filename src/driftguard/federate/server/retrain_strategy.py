@@ -552,6 +552,9 @@ class Driftguard(RetrainStrategy):
         if rt_state.stage == RetrainState.Stage.IDLE:
             # 1. 开始
             # if reliance < self.thr_reliance or self.is_first_step:
+            self.act_gate = False
+            self.act_local = False
+            self.act_other = False
             if ave_acc < self.thr_sha_acc or self.is_first_step:
                 self.is_first_step = False
                 self.act_other = True
@@ -628,10 +631,6 @@ class Driftguard(RetrainStrategy):
         if self.act_other:
             fed_params.other = param_state.other or fed_params_list[cid].other
         
-        if rt_state.stage == RetrainState.Stage.COMPLETED:
-            self.act_gate = False
-            self.act_local = False
-            self.act_other = False
         return fed_params, rt_state.rt_cfg
         
 def grp_aggregate(
