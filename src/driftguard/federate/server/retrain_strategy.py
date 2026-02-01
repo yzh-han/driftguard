@@ -492,8 +492,8 @@ class Cluster(RetrainStrategy):
             # retrain local for selected clients
             if cid in rt_state.rt_cfg.selection:
                 fed_params = (
-                    FedParam.separate(grp_state.get_group(cid).params)
-                    or fed_params_list[cid]
+                    FedParam.separate(grp_state.get_group(cid).params) if grp_state.get_group(cid).params
+                    else fed_params_list[cid]
                 )
         return fed_params, rt_state.rt_cfg
 @dataclass
@@ -579,8 +579,7 @@ class Driftguard(RetrainStrategy):
         
         else:
             # 2. 继续训练
-            gate_params_list = [fed_params.gate for fed_params in fed_params_list]
-            param_state.gate = aggregate_params(gate_params_list)
+            param_state.gate = aggregate_params([p.gate for p in fed_params_list],)
             if self.act_local:
                 local_params_list = [fed_params.local for fed_params in fed_params_list]
                 grp_aggregate(
@@ -589,16 +588,12 @@ class Driftguard(RetrainStrategy):
                     grp_state,
                 )
             if self.act_other:
-                other_params_list = [fed_params.other for fed_params in fed_params_list] 
-                param_state.other = aggregate_params(other_params_list)
+                param_state.other = aggregate_params([p.other for p in fed_params_list])
 
             # 3. 更新状态
             if rt_state.stage == RetrainState.Stage.ONGOING:
                 rt_state.remain_round -= 1
             elif rt_state.stage == RetrainState.Stage.COMPLETED:
-                self.act_gate = False
-                self.act_local = False
-                self.act_other = False
                 rt_state.rt_cfg.trigger = False
                 logger.debug("Retraining ended.")
 
@@ -620,6 +615,9 @@ class Driftguard(RetrainStrategy):
         # blank for no retrain
         fed_params = FedParam()
         if not rt_state.rt_cfg.trigger and rt_state.rt_cfg.param_type == ParamType.NONE:
+            self.act_gate = False
+            self.act_local = False
+            self.act_other = False
             return fed_params, rt_state.rt_cfg
         
         # retrain
@@ -628,11 +626,6 @@ class Driftguard(RetrainStrategy):
         )  # always retrain gate
 
         if self.act_local:
-            # retrain local for selected clients
-            # if rt_state.remain_round == 0:
-            #     pass
-            # elif cid in rt_state.rt_cfg.selection:
-            #     fed_params.local = grp_state.get_group(cid).params or fed_params_list[cid].local
             if cid in rt_state.rt_cfg.selection:
                 fed_params.local = grp_state.get_group(cid).params or fed_params_list[cid].local
         if self.act_other:
