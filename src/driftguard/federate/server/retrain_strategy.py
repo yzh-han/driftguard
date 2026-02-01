@@ -615,9 +615,6 @@ class Driftguard(RetrainStrategy):
         # blank for no retrain
         fed_params = FedParam()
         if not rt_state.rt_cfg.trigger and rt_state.rt_cfg.param_type == ParamType.NONE:
-            self.act_gate = False
-            self.act_local = False
-            self.act_other = False
             return fed_params, rt_state.rt_cfg
         
         # retrain
@@ -631,6 +628,10 @@ class Driftguard(RetrainStrategy):
         if self.act_other:
             fed_params.other = param_state.other or fed_params_list[cid].other
         
+        if rt_state.stage == RetrainState.Stage.COMPLETED:
+            self.act_gate = False
+            self.act_local = False
+            self.act_other = False
         return fed_params, rt_state.rt_cfg
         
 def grp_aggregate(
