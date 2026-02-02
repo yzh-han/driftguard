@@ -105,7 +105,7 @@ exps = Exps(
         # MODEL.CVIT
     ],
     strategies=[
-        # Never(),
+        Never(),
         AveTrig(thr_acc=0.85, data_port=14101, server_port=14102),
         PerCTrig(thr_acc=0.85, data_port=14201, server_port=14202),
         MoEAve(thr_acc=0.85, data_port=14301, server_port=14302),

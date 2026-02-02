@@ -13,7 +13,11 @@ from torchvision.models import resnet18
 import json
 from pathlib import Path
 
-for ds in [DATASET.PACS]: # DATASET.DG5, , DATASET.DDN
+for ds in [
+    DATASET.DG5,
+    # DATASET.PACS,
+    # DATASET.DDN,
+]:
     path, n_class, img_size = ds.value
     domain = json.loads(Path(path).read_text())["domains"][0]
     data_path = Path(path).parent / domain
@@ -45,9 +49,16 @@ for ds in [DATASET.PACS]: # DATASET.DG5, , DATASET.DDN
     # break
 
     # MODEL.CRST_S,
-    for model in [ MODEL.CRST_M, MODEL.CVIT]:
+    for model in [
+        # MODEL.CRST_S,
+        MODEL.CVIT_S,
+        # MODEL.CRST_M,
+        # MODEL.CVIT,
+    ]:
         
-        if model == MODEL.CRST_S and (ds == DATASET.PACS or ds == DATASET.DDN):
+        if (model == MODEL.CRST_S or model == MODEL.CRST_S) and (
+            ds == DATASET.PACS or ds == DATASET.DDN
+        ):
             continue  # skip cresnet_s on pacs and ddn
         if (model == MODEL.CVIT or model == MODEL.CRST_M) and ds == DATASET.DG5:
             continue  # skip cvit on dg5

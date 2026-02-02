@@ -68,13 +68,13 @@ class MODEL(Enum):
             num_classes,
             image_size=28,
             patch_size=4,
-            dim=96,
-            depth=9,
+            dim=192,
+            depth=12,
             num_heads=3,
         )
 
 # print(get_trainable_params(get_cresnet(10, [1,1,1])))
-# print(get_trainable_params(get_cvit(10, image_size=28, patch_size=4, dim=96, depth=9, num_heads=3)))
+# print(get_trainable_params(get_cvit(10, image_size=28, patch_size=4, dim=192, depth=12, num_heads=3)))
 
 @dataclass
 class Exp:
@@ -98,6 +98,7 @@ class Exps:
             MODEL.CRST_S,
             MODEL.CRST_M,
             MODEL.CVIT,
+            MODEL.CVIT_S,
         ]
     )
     strategies: List[RetrainStrategy] = field(
