@@ -9,6 +9,7 @@ import torch
 from driftguard.federate.server.retrain_strategy import RetrainStrategy, Driftguard
 from driftguard.model.c_resnet.model import get_cresnet
 from driftguard.model.c_vit.model import get_cvit
+from driftguard.model.utils import get_trainable_params
 
 class DATASET(Enum):
     """
@@ -34,6 +35,7 @@ class MODEL(Enum):
     CRST_S = "crst_s"
     CRST_M = "crst_m"
     CVIT = "cvit"
+    CVIT_S = "cvit_s"
     
     @property
     def fn(self) -> Callable:
@@ -43,6 +45,8 @@ class MODEL(Enum):
             return MODEL.cresnet_m
         elif self == MODEL.CVIT:
             return MODEL.cvit
+        elif self == MODEL.CVIT_S:
+            return MODEL.cvit_s
         else:
             raise ValueError(f"Unknown model function: {self}")
     @staticmethod
@@ -57,6 +61,20 @@ class MODEL(Enum):
     def cvit(num_classes: int) -> Callable:
         """Build a Cvit model."""
         return get_cvit(num_classes)
+    @staticmethod
+    def cvit_s(num_classes: int) -> Callable:
+        """Build a Cvit model for 28x28 inputs."""
+        return get_cvit(
+            num_classes,
+            image_size=28,
+            patch_size=4,
+            dim=96,
+            depth=9,
+            num_heads=3,
+        )
+
+# print(get_trainable_params(get_cresnet(10, [1,1,1])))
+# print(get_trainable_params(get_cvit(10, image_size=28, patch_size=4, dim=96, depth=9, num_heads=3)))
 
 @dataclass
 class Exp:
@@ -94,7 +112,9 @@ class Exps:
         exp_list = []
         for dataset in self.datasets:
             for model in self.models:
-                if model == MODEL.CRST_S and (dataset == DATASET.PACS or dataset == DATASET.DDN):
+                if (model == MODEL.CRST_S or model == MODEL.CRST_S) and (
+                    dataset == DATASET.PACS or dataset == DATASET.DDN
+                ):
                     continue  # skip cresnet_s on pacs and ddn
                 if (model == MODEL.CVIT or model == MODEL.CRST_M) and dataset == DATASET.DG5:
                     continue  # skip cvit on dg5
@@ -109,4 +129,3 @@ class Exps:
                     )
                     exp_list.append(exp)
         return exp_list
-
