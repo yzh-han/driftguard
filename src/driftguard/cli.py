@@ -106,12 +106,12 @@ exps = Exps(
     ],
     strategies=[
         # Never(),
-        # AveTrig(thr_acc=0.85, data_port=14101, server_port=14102),
-        # PerCTrig(thr_acc=0.85, data_port=14201, server_port=14202),
-        # MoEAve(thr_acc=0.85, data_port=14301, server_port=14302),
-        # MoEPerC(thr_acc=0.85, data_port=14401, server_port=14402),
-        # Cluster(thr_acc=0.85, data_port=14501, server_port=14502),
-        Driftguard(thr_group_acc=0.85, thr_sha_acc_pct=0.975, data_port=15601, server_port=15602),
+        AveTrig(thr_acc=0.9, data_port=14101, server_port=14102),
+        PerCTrig(thr_acc=0.9, data_port=14201, server_port=14202),
+        MoEAve(thr_acc=0.9, data_port=14301, server_port=14302),
+        MoEPerC(thr_acc=0.9, data_port=14401, server_port=14402),
+        Cluster(thr_acc=0.9, data_port=14501, server_port=14502),
+        Driftguard(thr_group_acc=0.9, thr_sha_acc_pct=0.95, data_port=15601, server_port=15602),
         # Driftguard(thr_reliance=0.35, thr_group_acc=0.65, data_port=11701, server_port=11702, name="reliance_35"),
         # Driftguard(thr_reliance=0.25, thr_group_acc=0.65, data_port=11601, server_port=11602, name="Dri_rel25"),
         # Driftguard(thr_reliance=0.3, thr_group_acc=0.65, data_port=12801, server_port=12802, name="DRI_rel30"),
@@ -125,7 +125,7 @@ def main() -> None:
     for exp in exps:
         print("\n\n")
         logger.info(f"[Experiment]: {exp.name}, Dataset: {exp.dataset.name}, Model: {exp.model.value}, Strategy: {exp.strategy.name}")
-        cluster_thr, min_group_size = 0.15, 2 # <--------------------
+        cluster_thr, min_group_size = 0.12, 2 # <--------------------
         clustr = str(cluster_thr).split('.')[0] + str(cluster_thr).split('.')[-1]
         cfg = LaunchConfig(
             # exp_root=f"exp/ablation_{exp.strategy.name}",
