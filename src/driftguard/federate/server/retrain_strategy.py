@@ -501,11 +501,12 @@ class Driftguard(RetrainStrategy):
     """Default retraining strategy based on reliance and group accuracy."""
     thr_reliance: float = 0.1
     thr_group_acc: float = 0.65
+    thr_sha_acc_pct: float = 0.95
 
     name: str = "driftguard"
     
     def __post_init__(self):
-        self.thr_sha_acc: float = self.thr_group_acc * 0.95
+        self.thr_sha_acc: float = self.thr_group_acc * self.thr_sha_acc_pct
 
         self.act_gate: bool = False
         self.act_local: bool = False

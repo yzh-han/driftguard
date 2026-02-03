@@ -48,7 +48,12 @@ class TrainConfig:
     early_stop_patience: int = 5
     early_stop_min_delta: float = 0.0
     def __post_init__(self) -> None:
-        self.amp = True if self.device is torch.cuda.is_available() else False
+        self.amp = (
+            True
+            if "cuda" in str(self.device).lower()
+            and torch.cuda.is_available()
+            else False
+        )
     
     # record checkpoint name
     cp_name: str = "init.pth"
