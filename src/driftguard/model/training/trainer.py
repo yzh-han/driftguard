@@ -167,9 +167,6 @@ class Trainer:
     def load(self) -> None:
         """Load the model state dict."""
         os.makedirs("cp", exist_ok=True)
-        if not os.path.exists(f"cp/{self._cp_name}.pth"):
-            logger.warning(f"No checkpoint found at cp/{self._cp_name}.pth")
-            return
         self.model.load_state_dict(
             torch.load(f"cp/{self._cp_name}.pth", map_location=self.device)
         )

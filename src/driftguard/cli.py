@@ -45,7 +45,7 @@ class LaunchConfig:
     model: MODEL
     num_clients: int
     epochs: int
-    
+    lr: float
 
     # server
     rt_round: int
@@ -73,7 +73,7 @@ def build_client(cid: int, cfg: LaunchConfig) -> FedClient:
             config=TrainConfig(
                 epochs=cfg.epochs,
                 device=cfg.device,
-                lr=0.001,
+                lr=cfg.lr,
                 accumulate_steps=1,
                 early_stop=True,
                 cp_name=f"{cfg.dataset.name}-{cfg.model.value}"
@@ -99,19 +99,19 @@ exps = Exps(
         DATASET.DDN
     ],
     models=[
-        MODEL.CRST_S, 
-        # MODEL.CVIT_S,
+        # MODEL.CRST_S, 
+        MODEL.CVIT_S,
         # MODEL.CRST_M, 
         # MODEL.CVIT
     ],
     strategies=[
         # Never(),
-        AveTrig(thr_acc=0.9, data_port=15101, server_port=15102),
-        PerCTrig(thr_acc=0.9, data_port=15201, server_port=15202),
-        MoEAve(thr_acc=0.9, data_port=15301, server_port=15302),
-        MoEPerC(thr_acc=0.9, data_port=15401, server_port=15402),
-        Cluster(thr_acc=0.9, data_port=15501, server_port=15502),
-        Driftguard(thr_group_acc=0.9, thr_sha_acc_pct=0.95, data_port=15601, server_port=15602),
+        AveTrig(thr_acc=0.9, data_port=16101, server_port=16102),
+        PerCTrig(thr_acc=0.9, data_port=16201, server_port=16202),
+        MoEAve(thr_acc=0.9, data_port=16301, server_port=16302),
+        MoEPerC(thr_acc=0.9, data_port=16401, server_port=16402),
+        Cluster(thr_acc=0.9, data_port=16501, server_port=16502),
+        Driftguard(thr_group_acc=0.9, thr_sha_acc_pct=0.95, data_port=16601, server_port=16602),
         # Driftguard(thr_reliance=0.35, thr_group_acc=0.65, data_port=11701, server_port=11702, name="reliance_35"),
         # Driftguard(thr_reliance=0.25, thr_group_acc=0.65, data_port=11601, server_port=11602, name="Dri_rel25"),
         # Driftguard(thr_reliance=0.3, thr_group_acc=0.65, data_port=12801, server_port=12802, name="DRI_rel30"),
@@ -124,7 +124,7 @@ def main() -> None:
     """Start the local data service, server, and clients."""
     for exp in exps:
         print("\n\n")
-        logger.info(f"[Experiment]: {exp.name}, Dataset: {exp.dataset.name}, Model: {exp.model.value}, Strategy: {exp.strategy.name}")
+        logger.info(f"[Experiment]: {exp.name}, Dataset: {exp.dataset.name}, Model: {exp.model.value}, Strategy: {exp.strategy.name}, lr: {exp.lr}")
         cluster_thr, min_group_size = 0.12, 2 # <--------------------
         clustr = str(cluster_thr).split('.')[0] + str(cluster_thr).split('.')[-1]
         cfg = LaunchConfig(
@@ -143,6 +143,7 @@ def main() -> None:
             model = exp.model,
             device = exp.device,
             epochs=20, # <--------------------
+            lr = exp.lr,
             # server
             rt_round=5, # communication rounds <--------------------
             strategy= exp.strategy,

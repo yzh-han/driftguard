@@ -84,6 +84,9 @@ class Exp:
     strategy: RetrainStrategy
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
+    def __post_init__(self):
+        self.lr: float = 0.0001 if self.model == MODEL.CVIT_S else 0.001
+
 @dataclass
 class Exps:
     datasets: List[DATASET] = field(
