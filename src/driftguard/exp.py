@@ -68,13 +68,13 @@ class MODEL(Enum):
             num_classes,
             image_size=28,
             patch_size=4,
-            dim=192,
+            dim=128,
             depth=6,
-            num_heads=12,
+            num_heads=4,
         )
 
-print(get_trainable_params(MODEL.CRST_S.fn(10)))
-print(get_trainable_params(MODEL.CVIT_S.fn(10)))
+# print(get_trainable_params(MODEL.CRST_S.fn(10)))
+# print(get_trainable_params(MODEL.CVIT_S.fn(10)))
 
 @dataclass
 class Exp:

@@ -551,5 +551,6 @@ def get_cvit(
     # Modify MLPArgs for CViT
     model = VisonTransformer(args)
     model.apply(_init_vit_weights)
-    load_timm_vit_partial_from_model(model)
+    if args.image_size == 224:
+        load_timm_vit_partial_from_model(model)
     return model

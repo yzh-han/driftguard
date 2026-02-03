@@ -43,9 +43,9 @@ for ds in [
 
     full_ds = datasets.ImageFolder(data_path, transform=val_tfm)
 
-    idxs = random.sample(range(len(full_ds)), 1000)
+    idxs = random.sample(range(len(full_ds)), 800)
     train_idxs_1, train_idxs_2, val_idxs, train_idx  = (
-        idxs[:400], idxs[400:500], idxs[500:800], idxs[800:1000]
+        idxs[:300], idxs[300:400], idxs[300:600], idxs[600:800]
     )
 
     train_ds, val_ds = (
@@ -88,6 +88,7 @@ for ds in [
                 accumulate_steps=1,
                 early_stop=True,
                 cp_name=cp_name,
+                lr=0.0001
             ),
         )
         history = trainer.fit(train_loader_11, test_loader)
