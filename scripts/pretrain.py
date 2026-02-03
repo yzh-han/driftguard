@@ -1,7 +1,9 @@
 from collections import Counter
 import random
+import torch
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
+from driftguard.config import setup_logging
 from driftguard.exp import DATASET, MODEL
 from driftguard.model.c_resnet.model import get_cresnet
 from driftguard.model.c_vit.model import get_cvit
@@ -12,6 +14,21 @@ import torch.nn as nn
 from torchvision.models import resnet18
 import json
 from pathlib import Path
+    
+
+setup_logging(level="DEBUG")
+
+print(torch.backends.mps.is_available())
+# device = "cuda" if torch.cuda.is_available() else "mps"
+device = "mps" if torch.backends.mps.is_available() else "cpu"
+
+
+models = [
+    # MODEL.CRST_S,
+    # MODEL.CRST_M,
+    MODEL.CVIT_S,
+    # MODEL.CVIT,
+]
 
 for ds in [
     DATASET.DG5,
@@ -26,9 +43,9 @@ for ds in [
 
     full_ds = datasets.ImageFolder(data_path, transform=val_tfm)
 
-    idxs = random.sample(range(len(full_ds)), 400)
+    idxs = random.sample(range(len(full_ds)), 1000)
     train_idxs_1, train_idxs_2, val_idxs, train_idx  = (
-        idxs[:100], idxs[100:200], idxs[200:300], idxs[300:400]
+        idxs[:400], idxs[400:500], idxs[500:800], idxs[800:1000]
     )
 
     train_ds, val_ds = (
@@ -49,12 +66,7 @@ for ds in [
     # break
 
     # MODEL.CRST_S,
-    for model in [
-        # MODEL.CRST_S,
-        MODEL.CVIT_S,
-        # MODEL.CRST_M,
-        # MODEL.CVIT,
-    ]:
+    for model in models:
         
         if (model == MODEL.CRST_S or model == MODEL.CRST_S) and (
             ds == DATASET.PACS or ds == DATASET.DDN

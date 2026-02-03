@@ -69,12 +69,12 @@ class MODEL(Enum):
             image_size=28,
             patch_size=4,
             dim=192,
-            depth=12,
-            num_heads=3,
+            depth=6,
+            num_heads=12,
         )
 
-# print(get_trainable_params(get_cresnet(10, [1,1,1])))
-# print(get_trainable_params(get_cvit(10, image_size=28, patch_size=4, dim=192, depth=12, num_heads=3)))
+print(get_trainable_params(MODEL.CRST_S.fn(10)))
+print(get_trainable_params(MODEL.CVIT_S.fn(10)))
 
 @dataclass
 class Exp:
