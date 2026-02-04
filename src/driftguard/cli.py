@@ -94,24 +94,24 @@ def build_client(cid: int, cfg: LaunchConfig) -> FedClient:
 #######################################
 exps = Exps(
     datasets=[
-        # DATASET.DG5, 
+        DATASET.DG5, 
         # DATASET.PACS, 
-        DATASET.DDN
+        # DATASET.DDN
     ],
     models=[
-        # MODEL.CRST_S, 
+        MODEL.CRST_S, 
         # MODEL.CVIT_S,
         # MODEL.CRST_M, 
-        MODEL.CVIT
+        # MODEL.CVIT
     ],
     strategies=[
         # Never(),
-        # AveTrig(thr_acc=0.9, data_port=16101, server_port=16102),
-        # PerCTrig(thr_acc=0.9, data_port=16201, server_port=16202),
-        # MoEAve(thr_acc=0.9, data_port=16301, server_port=16302),
-        # MoEPerC(thr_acc=0.9, data_port=16401, server_port=16402),
-        # Cluster(thr_acc=0.9, data_port=16501, server_port=16502),
-        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.975, data_port=11601, server_port=11602),
+        # AveTrig(thr_acc=0.85, data_port=16101, server_port=16102),
+        # PerCTrig(thr_acc=0.85, data_port=16201, server_port=16202),
+        # MoEAve(thr_acc=0.85, data_port=16301, server_port=16302),
+        # MoEPerC(thr_acc=0.85, data_port=16401, server_port=16402),
+        # Cluster(thr_acc=0.85, data_port=16501, server_port=16502),
+        Driftguard(thr_group_acc=0.9, thr_sha_acc_pct=0.975, data_port=16601, server_port=16602),
         # Driftguard(thr_reliance=0.35, thr_group_acc=0.65, data_port=11701, server_port=11702, name="reliance_35"),
         # Driftguard(thr_reliance=0.25, thr_group_acc=0.65, data_port=11601, server_port=11602, name="Dri_rel25"),
         # Driftguard(thr_reliance=0.3, thr_group_acc=0.65, data_port=12801, server_port=12802, name="DRI_rel30"),
