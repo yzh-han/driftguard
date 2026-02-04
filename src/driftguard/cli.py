@@ -94,24 +94,24 @@ def build_client(cid: int, cfg: LaunchConfig) -> FedClient:
 #######################################
 exps = Exps(
     datasets=[
-        DATASET.DG5, 
-        DATASET.PACS, 
+        # DATASET.DG5, 
+        # DATASET.PACS, 
         DATASET.DDN
     ],
     models=[
         # MODEL.CRST_S, 
-        MODEL.CVIT_S,
+        # MODEL.CVIT_S,
         # MODEL.CRST_M, 
-        # MODEL.CVIT
+        MODEL.CVIT
     ],
     strategies=[
         # Never(),
-        AveTrig(thr_acc=0.9, data_port=16101, server_port=16102),
-        PerCTrig(thr_acc=0.9, data_port=16201, server_port=16202),
-        MoEAve(thr_acc=0.9, data_port=16301, server_port=16302),
-        MoEPerC(thr_acc=0.9, data_port=16401, server_port=16402),
-        Cluster(thr_acc=0.9, data_port=16501, server_port=16502),
-        Driftguard(thr_group_acc=0.9, thr_sha_acc_pct=0.95, data_port=16601, server_port=16602),
+        # AveTrig(thr_acc=0.9, data_port=16101, server_port=16102),
+        # PerCTrig(thr_acc=0.9, data_port=16201, server_port=16202),
+        # MoEAve(thr_acc=0.9, data_port=16301, server_port=16302),
+        # MoEPerC(thr_acc=0.9, data_port=16401, server_port=16402),
+        # Cluster(thr_acc=0.9, data_port=16501, server_port=16502),
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.975, data_port=11601, server_port=11602),
         # Driftguard(thr_reliance=0.35, thr_group_acc=0.65, data_port=11701, server_port=11702, name="reliance_35"),
         # Driftguard(thr_reliance=0.25, thr_group_acc=0.65, data_port=11601, server_port=11602, name="Dri_rel25"),
         # Driftguard(thr_reliance=0.3, thr_group_acc=0.65, data_port=12801, server_port=12802, name="DRI_rel30"),
@@ -125,8 +125,8 @@ def main() -> None:
     for exp in exps:
         print("\n\n")
         logger.info(f"[Experiment]: {exp.name}, Dataset: {exp.dataset.name}, Model: {exp.model.value}, Strategy: {exp.strategy.name}, lr: {exp.lr}")
-        cluster_thr, min_group_size = 0.12, 2 # <--------------------
-        clustr = str(cluster_thr).split('.')[0] + str(cluster_thr).split('.')[-1]
+        # cluster_thr, min_group_size = 0.12, 2 # <--------------------
+        clustr = str(exp.cluster_thr).split('.')[0] + str(exp.cluster_thr).split('.')[-1]
         cfg = LaunchConfig(
             # exp_root=f"exp/ablation_{exp.strategy.name}",
             # exp_root=f"exp/{exp.strategy.name}_clu{clustr}_mgsize{min_group_size}",
@@ -147,8 +147,8 @@ def main() -> None:
             # server
             rt_round=5, # communication rounds <--------------------
             strategy= exp.strategy,
-            cluster_thr = cluster_thr, # 0.3,  # <--------------------
-            min_group_size = min_group_size,
+            cluster_thr = exp.cluster_thr, # 0.3,  # <--------------------
+            min_group_size = exp.min_group_size,
             data_port=exp.strategy.data_port, # <--------------------
             server_port=exp.strategy.server_port # <--------------------
         )

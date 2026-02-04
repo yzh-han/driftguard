@@ -85,8 +85,19 @@ class Exp:
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
 
     def __post_init__(self):
-        self.lr: float = 0.0001 if self.model == MODEL.CVIT_S else 0.001
-
+        if self.model == MODEL.CRST_S:
+            self.lr: float = 0.001
+            self.cluster_thr, self.min_group_size = 0.12, 2
+        elif self.model == MODEL.CRST_M:
+            self.lr: float = 0.001
+            self.cluster_thr, self.min_group_size = 0.12, 2
+        elif self.model == MODEL.CVIT:
+            self.lr: float = 0.001
+            self.cluster_thr, self.min_group_size = 0.21, 2
+        elif self.model == MODEL.CVIT_S:
+            self.lr: float = 0.00025
+        else:
+            raise ValueError(f"Unknown model: {self.model}")
 @dataclass
 class Exps:
     datasets: List[DATASET] = field(
