@@ -96,6 +96,7 @@ class Exp:
             self.cluster_thr, self.min_group_size = 0.21, 2
         elif self.model == MODEL.CVIT_S:
             self.lr: float = 0.00025
+            self.cluster_thr, self.min_group_size = 0.21, 2
         else:
             raise ValueError(f"Unknown model: {self.model}")
 @dataclass
