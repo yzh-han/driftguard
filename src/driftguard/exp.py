@@ -127,7 +127,7 @@ class Exps:
         exp_list = []
         for dataset in self.datasets:
             for model in self.models:
-                if (model == MODEL.CRST_S or model == MODEL.CRST_S) and (
+                if (model == MODEL.CRST_S or model == MODEL.CVIT_S ) and (
                     dataset == DATASET.PACS or dataset == DATASET.DDN
                 ):
                     continue  # skip cresnet_s on pacs and ddn
