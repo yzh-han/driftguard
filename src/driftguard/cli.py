@@ -131,7 +131,7 @@ def main() -> None:
             # exp_root=f"exp/ablation_{exp.strategy.name}",
             # exp_root=f"exp/{exp.strategy.name}_clu{clustr}_mgsize{min_group_size}",
             # exp_root="exp/main_acc60",
-            exp_root=f"exp/new_main/driftguard1/{exp.dataset.name}-{exp.model.value}",
+            exp_root=f"exp/new_main/crst-s/{exp.dataset.name}-{exp.model.value}",
             exp_name=exp.name,
             # data service
             sample_size_per_step = 16, # <--------------------
