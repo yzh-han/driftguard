@@ -556,7 +556,7 @@ class Driftguard(RetrainStrategy):
             self.act_gate = False
             self.act_local = False
             self.act_other = False
-            if ave_acc < self.thr_sha_acc or self.is_first_step:
+            if ave_acc < self.thr_sha_acc:
                 self.is_first_step = False
                 self.act_other = True
                 self.act_gate = True

@@ -99,19 +99,19 @@ exps = Exps(
         # DATASET.DDN
     ],
     models=[
-        # MODEL.CRST_S, 
-        MODEL.CVIT_S,
+        MODEL.CRST_S, 
+        # MODEL.CVIT_S,
         # MODEL.CRST_M, 
         # MODEL.CVIT
     ],
     strategies=[
-        Never(),
-        AveTrig(thr_acc=0.7, data_port=13101, server_port=13102),
-        PerCTrig(thr_acc=0.7, data_port=13201, server_port=13202),
-        MoEAve(thr_acc=0.7, data_port=13301, server_port=13302),
-        MoEPerC(thr_acc=0.7, data_port=13401, server_port=13402),
-        Cluster(thr_acc=0.7, data_port=13501, server_port=13502),
-        Driftguard(thr_group_acc=0.7, thr_sha_acc_pct=0.95, data_port=13601, server_port=13602),
+        # Never(),
+        # AveTrig(thr_acc=0.7, data_port=13101, server_port=13102),
+        # PerCTrig(thr_acc=0.7, data_port=13201, server_port=13202),
+        # MoEAve(thr_acc=0.7, data_port=13301, server_port=13302),
+        MoEPerC(thr_acc=0.9, data_port=14401, server_port=14402),
+        # Cluster(thr_acc=0.7, data_port=13501, server_port=13502),
+        Driftguard(thr_group_acc=0.9, thr_sha_acc_pct=0.95, data_port=14601, server_port=14602),
         # Driftguard(thr_reliance=0.35, thr_group_acc=0.65, data_port=11701, server_port=11702, name="reliance_35"),
         # Driftguard(thr_reliance=0.25, thr_group_acc=0.65, data_port=11601, server_port=11602, name="Dri_rel25"),
         # Driftguard(thr_reliance=0.3, thr_group_acc=0.65, data_port=12801, server_port=12802, name="DRI_rel30"),
@@ -134,7 +134,7 @@ def main() -> None:
             exp_root=f"exp/new_main/driftguard1/{exp.dataset.name}-{exp.model.value}",
             exp_name=exp.name,
             # data service
-            sample_size_per_step = 15, # <--------------------
+            sample_size_per_step = 16, # <--------------------
             dataset = exp.dataset,
             # client
             total_steps = 30, # <--------------------
