@@ -76,5 +76,5 @@ def set_log_level(level: str):
     """动态调整日志级别"""
     logging.getLogger("driftguard").setLevel(getattr(logging, level.upper()))
 
-setup_logging(level="DEBUG")  # 默认日志级别为 INFO
+# setup_logging(level="DEBUG")  # 默认日志级别为 INFO
 setup_logging(level="INFO")  # 默认日志级别为 INFO
