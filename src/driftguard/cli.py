@@ -134,7 +134,7 @@ def main() -> None:
             exp_root=f"exp/new_main/driftguard1/{exp.dataset.name}-{exp.model.value}",
             exp_name=exp.name,
             # data service
-            sample_size_per_step = 30,
+            sample_size_per_step = 15, # <--------------------
             dataset = exp.dataset,
             # client
             total_steps = 30, # <--------------------

@@ -24,9 +24,9 @@ device = "mps" if torch.backends.mps.is_available() else "cpu"
 
 
 models = [
-    # MODEL.CRST_S,
+    MODEL.CRST_S,
     # MODEL.CRST_M,
-    MODEL.CVIT_S,
+    # MODEL.CVIT_S,
     # MODEL.CVIT,
 ]
 
@@ -45,7 +45,7 @@ for ds in [
 
     idxs = random.sample(range(len(full_ds)), 400)
     train_idxs_1, train_idxs_2, train_idx, val_idxs,   = (
-        idxs[:150], idxs[150:300], idxs[0:300], idxs[300:400]
+        idxs[:40], idxs[40:80], idxs[0:80], idxs[80:100]
     ) # 150 for train_1, 50 for train_2, 100 for val, 200 for train_all
 
     train_ds, val_ds = (
@@ -88,7 +88,7 @@ for ds in [
                 accumulate_steps=1,
                 early_stop=True,
                 cp_name=cp_name,
-                lr=0.0001
+                lr=0.001
             ),
         )
         history = trainer.fit(train_loader_11, test_loader)
