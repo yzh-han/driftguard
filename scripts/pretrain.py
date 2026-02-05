@@ -43,10 +43,10 @@ for ds in [
 
     full_ds = datasets.ImageFolder(data_path, transform=val_tfm)
 
-    idxs = random.sample(range(len(full_ds)), 800)
-    train_idxs_1, train_idxs_2, val_idxs, train_idx  = (
-        idxs[:300], idxs[300:400], idxs[300:600], idxs[600:800]
-    )
+    idxs = random.sample(range(len(full_ds)), 400)
+    train_idxs_1, train_idxs_2, train_idx, val_idxs,   = (
+        idxs[:150], idxs[150:300], idxs[0:300], idxs[300:400]
+    ) # 150 for train_1, 50 for train_2, 100 for val, 200 for train_all
 
     train_ds, val_ds = (
         datasets.ImageFolder(data_path, transform=train_tfm), 
@@ -95,8 +95,8 @@ for ds in [
         history = trainer.fit(train_loader_12, test_loader)
 
         history = trainer.fit(train_loader_21, test_loader)
-        history = trainer.fit(train_loader_22, test_loader)
-        history = trainer.fit(train_loader, test_loader)
+        # history = trainer.fit(train_loader_22, test_loader)
+        # history = trainer.fit(train_loader, test_loader)
         trainer.save()
 
         
