@@ -87,7 +87,7 @@ class Exp:
     def __post_init__(self):
         if self.model == MODEL.CRST_S:
             self.lr: float = 0.001
-            self.cluster_thr, self.min_group_size = 0.14, 2
+            self.cluster_thr, self.min_group_size = 0.15, 2
         elif self.model == MODEL.CRST_M:
             self.lr: float = 0.001
             self.cluster_thr, self.min_group_size = 0.12, 2
