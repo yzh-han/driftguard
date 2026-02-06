@@ -105,12 +105,12 @@ exps = Exps(
         # MODEL.CVIT
     ],
     strategies=[
-        # Never(),
-        # AveTrig(thr_acc=0.7, data_port=13101, server_port=13102),
-        # PerCTrig(thr_acc=0.7, data_port=13201, server_port=13202),
-        # MoEAve(thr_acc=0.7, data_port=13301, server_port=13302),
-        MoEPerC(thr_acc=0.85, data_port=14401, server_port=14402),
-        # Cluster(thr_acc=0.7, data_port=13501, server_port=13502),
+        Never(),
+        AveTrig(thr_acc=0.85, data_port=13101, server_port=13102),
+        PerCTrig(thr_acc=0.85, data_port=13201, server_port=13202),
+        MoEAve(thr_acc=0.85, data_port=13301, server_port=13302),
+        # MoEPerC(thr_acc=0.85, data_port=14401, server_port=14402),
+        Cluster(thr_acc=0.85, data_port=13501, server_port=13502),
         # Driftguard(thr_group_acc=0.85, thr_sha_acc_pct=0.95, data_port=14601, server_port=14602),
         # Driftguard(thr_reliance=0.35, thr_group_acc=0.65, data_port=11701, server_port=11702, name="reliance_35"),
         # Driftguard(thr_reliance=0.25, thr_group_acc=0.65, data_port=11601, server_port=11602, name="Dri_rel25"),
