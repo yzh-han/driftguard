@@ -67,9 +67,12 @@ class FedClient:
             self.recorder.update_acc(time_step, obs.accuracy) 
             # step 3. trigger retrain if needed
             # obs = self.inference(samples) #
-            # self.recorder.update_acc(time_step, obs.accuracy)    
+            # self.recorder.update_acc(time_step, obs.accuracy)
 
-            train_sets, val_sets = [*self._buffer, *samples[:-10]], samples[-10:]
+            train_sets, val_sets = (
+                [*self._buffer, *samples[: -len(samples) // 3]],
+                samples[-len(samples) // 3 :],
+            )
             while True:
                 FedParam.unfreeze(self.model)
                 # request 3 req_trig
@@ -101,7 +104,7 @@ class FedClient:
                 self.train(train_sets, val_sets, time_step)
 
             # one step done, update buffer
-            self._buffer = samples[-10:]
+            self._buffer = samples[-len(samples) // 3:]
         # all steps done
         self.recorder.record(self.cid)
 
