@@ -106,15 +106,15 @@ exps = Exps(
     ],
     strategies=[
         # ablation
-        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.99, cluster_thr= 0.2, min_group_size=2, data_port=14611, server_port=14612),
-        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=2, data_port=14621, server_port=14622),
-        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.9, cluster_thr= 0.2, min_group_size=2, data_port=14631, server_port=14632),
+        # Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.99, cluster_thr= 0.2, min_group_size=2, data_port=14611, server_port=14612),
+        # Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=2, data_port=14621, server_port=14622),
+        # Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.9, cluster_thr= 0.2, min_group_size=2, data_port=14631, server_port=14632),
         
-        # Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.1, min_group_size=2, data_port=14641, server_port=14642),
-        # Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.3, min_group_size=2, data_port=14651, server_port=14652),
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.1, min_group_size=2, data_port=14641, server_port=14642),
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.3, min_group_size=2, data_port=14651, server_port=14652),
 
-        # Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=1, data_port=14661, server_port=14662),
-        # Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=3, data_port=14671, server_port=14672),
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=1, data_port=14661, server_port=14662),
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=3, data_port=14671, server_port=14672),
 
         # Never(),
         # AveTrig(thr_acc=0.85, data_port=13101, server_port=13102),
