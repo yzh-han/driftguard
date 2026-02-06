@@ -94,24 +94,35 @@ def build_client(cid: int, cfg: LaunchConfig) -> FedClient:
 #######################################
 exps = Exps(
     datasets=[
-        DATASET.DG5, 
+        # DATASET.DG5, 
         # DATASET.PACS, 
-        # DATASET.DDN
+        DATASET.DDN
     ],
     models=[
-        MODEL.CRST_S, 
+        # MODEL.CRST_S, 
         # MODEL.CVIT_S,
         # MODEL.CRST_M, 
-        # MODEL.CVIT
+        MODEL.CVIT
     ],
     strategies=[
+        # ablation
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.99, cluster_thr= 0.2, min_group_size=2, data_port=14611, server_port=14612),
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=2, data_port=14621, server_port=14622),
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.9, cluster_thr= 0.2, min_group_size=2, data_port=14631, server_port=14632),
+        
+        # Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.1, min_group_size=2, data_port=14641, server_port=14642),
+        # Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.3, min_group_size=2, data_port=14651, server_port=14652),
+
+        # Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=1, data_port=14661, server_port=14662),
+        # Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=3, data_port=14671, server_port=14672),
+
         # Never(),
         # AveTrig(thr_acc=0.85, data_port=13101, server_port=13102),
         # PerCTrig(thr_acc=0.85, data_port=13201, server_port=13202),
         # MoEAve(thr_acc=0.85, data_port=13301, server_port=13302),
         # MoEPerC(thr_acc=0.85, data_port=14401, server_port=14402),
         # Cluster(thr_acc=0.85, data_port=13501, server_port=13502),
-        Driftguard(thr_group_acc=0.85, thr_sha_acc_pct=0.9, data_port=14601, server_port=14602),
+        # Driftguard(thr_group_acc=0.85, thr_sha_acc_pct=0.95, data_port=14601, server_port=14602),
         # Driftguard(thr_reliance=0.35, thr_group_acc=0.65, data_port=11701, server_port=11702, name="reliance_35"),
         # Driftguard(thr_reliance=0.25, thr_group_acc=0.65, data_port=11601, server_port=11602, name="Dri_rel25"),
         # Driftguard(thr_reliance=0.3, thr_group_acc=0.65, data_port=12801, server_port=12802, name="DRI_rel30"),
@@ -131,27 +142,29 @@ def main() -> None:
             # exp_root=f"exp/ablation_{exp.strategy.name}",
             # exp_root=f"exp/{exp.strategy.name}_clu{clustr}_mgsize{min_group_size}",
             # exp_root="exp/main_acc60",
-            exp_root=f"exp/new_main/crst-s/{exp.dataset.name}-{exp.model.value}",
+            exp_root=f"exp/ablations/acc{str(exp.strategy.thr_sha_acc_pct).split('.')[-1]}_clu{str(exp.cluster_thr).split('.')[-1]}_mingrp{exp.min_group_size}",
             exp_name=exp.name,
             # data service
-            sample_size_per_step = 16, # <--------------------
-            dataset = exp.dataset,
+            sample_size_per_step=30,  # <--------------------
+            dataset=exp.dataset,
             # client
-            total_steps = 30, # <--------------------
-            batch_size = 8,
+            total_steps=30,  # <--------------------
+            batch_size=8,
             num_clients=20,
-            model = exp.model,
-            device = exp.device,
-            epochs=20, # <--------------------
-            lr = exp.lr,
+            model=exp.model,
+            device=exp.device,
+            epochs=20,  # <--------------------
+            lr=exp.lr,
             # server
-            rt_round=5, # communication rounds <--------------------
-            strategy= exp.strategy,
-            cluster_thr = exp.cluster_thr, # 0.3,  # <--------------------
-            min_group_size = exp.min_group_size,
-            data_port=exp.strategy.data_port, # <--------------------
-            server_port=exp.strategy.server_port # <--------------------
+            rt_round=5,  # communication rounds <--------------------
+            strategy=exp.strategy,
+            cluster_thr=exp.strategy.cluster_thr
+            or exp.cluster_thr,  # 0.3,  # <--------------------
+            min_group_size=exp.strategy.min_group_size or exp.min_group_size,
+            data_port=exp.strategy.data_port,  # <--------------------
+            server_port=exp.strategy.server_port,  # <--------------------
         )
+        logger.info(f"root: {cfg.exp_root}, name: {cfg.exp_name}")
 
         event_args = DriftEventArgs(
             n_time_steps=cfg.total_steps,

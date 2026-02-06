@@ -24,6 +24,10 @@ class RetrainStrategy(ABC):
     server_port:int = 11002
     name: str=""
 
+    thr_sha_acc_pct: float | None = None
+    cluster_thr: float | None = None
+    min_group_size: int | None = None
+
     @abstractmethod
     def on_obs(
         self,
