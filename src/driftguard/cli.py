@@ -94,15 +94,15 @@ def build_client(cid: int, cfg: LaunchConfig) -> FedClient:
 #######################################
 exps = Exps(
     datasets=[
-        DATASET.DG5, 
+        # DATASET.DG5, 
         # DATASET.PACS, 
-        # DATASET.DDN
+        DATASET.DDN
     ],
     models=[
         # MODEL.CRST_S, 
-        MODEL.CVIT_S,
+        # MODEL.CVIT_S,
         # MODEL.CRST_M, 
-        # MODEL.CVIT
+        MODEL.CVIT
     ],
     strategies=[
         # ablation - crst_s
@@ -115,13 +115,13 @@ exps = Exps(
         # Driftguard(thr_group_acc=0.85, thr_sha_acc_pct=0.95, cluster_thr= 0.3, min_group_size=3, data_port=14701, server_port=14702),
 
         # ablation - cvit_s
-        Driftguard(thr_group_acc=0.7, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=2, data_port=14101, server_port=14102),
-        Driftguard(thr_group_acc=0.7, thr_sha_acc_pct=0.95, cluster_thr= 0.3, min_group_size=2, data_port=14201, server_port=14202),
-        Driftguard(thr_group_acc=0.7, thr_sha_acc_pct=0.95, cluster_thr= 0.3, min_group_size=3, data_port=14301, server_port=14302),
-        Driftguard(thr_group_acc=0.7, thr_sha_acc_pct=0.9, cluster_thr= 0.3, min_group_size=2, data_port=14401, server_port=14402),
-        Driftguard(thr_group_acc=0.7, thr_sha_acc_pct=0.9, cluster_thr= 0.3, min_group_size=3, data_port=14501, server_port=14502),
-        Driftguard(thr_group_acc=0.7, thr_sha_acc_pct=0.85, cluster_thr= 0.3, min_group_size=2, data_port=14601, server_port=14602),
-        Driftguard(thr_group_acc=0.7, thr_sha_acc_pct=0.8, cluster_thr= 0.3, min_group_size=3, data_port=14701, server_port=14702),
+        # Driftguard(thr_group_acc=0.7, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=2, data_port=14101, server_port=14102),
+        # Driftguard(thr_group_acc=0.7, thr_sha_acc_pct=0.95, cluster_thr= 0.3, min_group_size=2, data_port=14201, server_port=14202),
+        # Driftguard(thr_group_acc=0.7, thr_sha_acc_pct=0.95, cluster_thr= 0.3, min_group_size=3, data_port=14301, server_port=14302),
+        # Driftguard(thr_group_acc=0.7, thr_sha_acc_pct=0.9, cluster_thr= 0.3, min_group_size=2, data_port=14401, server_port=14402),
+        # Driftguard(thr_group_acc=0.7, thr_sha_acc_pct=0.9, cluster_thr= 0.3, min_group_size=3, data_port=14501, server_port=14502),
+        # Driftguard(thr_group_acc=0.7, thr_sha_acc_pct=0.85, cluster_thr= 0.3, min_group_size=2, data_port=14601, server_port=14602),
+        # Driftguard(thr_group_acc=0.7, thr_sha_acc_pct=0.8, cluster_thr= 0.3, min_group_size=3, data_port=14701, server_port=14702),
 
 
         # ablation
@@ -140,6 +140,16 @@ exps = Exps(
         # Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=3, data_port=14671, server_port=14672),
         # Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=4, data_port=15671, server_port=15672),
         # Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=5, data_port=16671, server_port=16672),
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=6, data_port=16171, server_port=16172),
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=7, data_port=16271, server_port=16272),
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=8, data_port=16371, server_port=16372),
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=9, data_port=16471, server_port=16472),
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=10, data_port=16571, server_port=16572),
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=11, data_port=16671, server_port=16672),
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=12, data_port=16771, server_port=16772),
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=13, data_port=16871, server_port=16872),
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=14, data_port=16971, server_port=16972),
+        Driftguard(thr_group_acc=0.6, thr_sha_acc_pct=0.95, cluster_thr= 0.2, min_group_size=15, data_port=17071, server_port=17072),
 
         # Never(),
         # AveTrig(thr_acc=0.85, data_port=13101, server_port=13102),
@@ -167,7 +177,7 @@ def main() -> None:
             # exp_root=f"exp/ablation_{exp.strategy.name}",
             # exp_root=f"exp/{exp.strategy.name}_clu{clustr}_mgsize{min_group_size}",
             # exp_root="exp/main_acc60",
-            exp_root=f"exp/ablations_cvits/acc{str(exp.strategy.thr_sha_acc_pct).split('.')[-1]}_clu{str(exp.strategy.cluster_thr).split('.')[-1]}_mingrp{exp.strategy.min_group_size}",
+            exp_root=f"exp/ablations/acc{str(exp.strategy.thr_sha_acc_pct).split('.')[-1]}_clu{str(exp.strategy.cluster_thr).split('.')[-1]}_mingrp{exp.strategy.min_group_size}",
             exp_name=exp.name,
             # data service
             sample_size_per_step=30,  # <--------------------
