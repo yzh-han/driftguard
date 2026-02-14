@@ -191,19 +191,19 @@ def generate_drift_events(
 
     return deque(events)
 
-event_args = DriftEventArgs(
-            n_time_steps=30,
-            n_clients=20,
-            n_sudden=3,
-            n_gradual=3,
-            n_stage=1,
-            aff_client_ratio_range=(0.1, 0.15),
-            start=0.05,
-            end=0.8,
-            dist_range=(1, 3),
-            gradual_duration_ratio=0.15,
-            seed=42,
-        )
-es = generate_drift_events(event_args)
-for e in es:
-    print(e)
+# event_args = DriftEventArgs(
+#             n_time_steps=30,
+#             n_clients=20,
+#             n_sudden=3,
+#             n_gradual=3,
+#             n_stage=1,
+#             aff_client_ratio_range=(0.1, 0.15),
+#             start=0.05,
+#             end=0.8,
+#             dist_range=(1, 3),
+#             gradual_duration_ratio=0.15,
+#             seed=42,
+#         )
+# es = generate_drift_events(event_args)
+# for e in es:
+#     print(e)
