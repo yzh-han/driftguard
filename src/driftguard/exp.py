@@ -73,8 +73,8 @@ class MODEL(Enum):
             num_heads=4,
         )
 
-print(get_trainable_params(MODEL.CRST_S.fn(10)))
-print(get_trainable_params(MODEL.CVIT_S.fn(10)))
+# print(get_trainable_params(MODEL.CRST_S.fn(10)))
+# print(get_trainable_params(MODEL.CVIT_S.fn(10)))
 
 @dataclass
 class Exp:

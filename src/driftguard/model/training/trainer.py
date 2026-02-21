@@ -4,6 +4,7 @@ from dataclasses import dataclass
 import os
 from typing import Callable, Iterable, Optional, Tuple
 
+import time
 import torch
 import torch.nn as nn
 from torch.amp.grad_scaler import GradScaler
@@ -198,10 +199,12 @@ class Trainer:
         no_improve = 0
 
         for epoch in range(self.config.epochs):
+            start = time.perf_counter()
             train_metrics, _, _, _ = self._run_epoch(train_loader, training=True)
             record = {
                 "epoch": epoch,
                 "train_loss": train_metrics.loss,
+                "time": time.perf_counter() - start,
             }
             if train_metrics.accuracy is not None:
                 record["train_accuracy"] = train_metrics.accuracy

@@ -5,6 +5,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from driftguard.config import setup_logging
 from driftguard.exp import DATASET, MODEL
+from driftguard.federate.params import FedParam
 from driftguard.model.c_resnet.model import get_cresnet
 from driftguard.model.c_vit.model import get_cvit
 from driftguard.model.dataset import get_inference_transform, get_train_transform
@@ -14,6 +15,9 @@ import torch.nn as nn
 from torchvision.models import resnet18
 import json
 from pathlib import Path
+
+from driftguard.model.utils import freeze_layer, get_trainable_params
+from driftguard.recorder import Recorder
     
 
 setup_logging(level="DEBUG")
@@ -45,7 +49,7 @@ for ds in [
 
     idxs = random.sample(range(len(full_ds)), 400)
     train_idxs_1, train_idxs_2, train_idx, val_idxs,   = (
-        idxs[:40], idxs[40:80], idxs[0:80], idxs[80:100]
+        idxs[:30], idxs[30:60], idxs[60:90], idxs[90:100]
     ) # 150 for train_1, 50 for train_2, 100 for val, 200 for train_all
 
     train_ds, val_ds = (
@@ -54,12 +58,12 @@ for ds in [
     )
 
     train_loader_11, train_loader_12, train_loader_21, train_loader_22, train_loader, test_loader = (
-        DataLoader(Subset(val_ds, train_idxs_1), batch_size=16, shuffle=True),
-        DataLoader(Subset(train_ds, train_idxs_1), batch_size=16, shuffle=True),
-        DataLoader(Subset(val_ds, train_idxs_2), batch_size=16, shuffle=True),
-        DataLoader(Subset(train_ds, train_idxs_2), batch_size=16, shuffle=True),
-        DataLoader(Subset(val_ds, train_idx), batch_size=32, shuffle=True),
-        DataLoader(Subset(val_ds, val_idxs), batch_size=16, shuffle=False),
+        DataLoader(Subset(val_ds, train_idxs_1), batch_size=8, shuffle=True),
+        DataLoader(Subset(train_ds, train_idxs_1), batch_size=8, shuffle=True),
+        DataLoader(Subset(val_ds, train_idxs_2), batch_size=8, shuffle=True),
+        DataLoader(Subset(train_ds, train_idxs_2), batch_size=8, shuffle=True),
+        DataLoader(Subset(val_ds, train_idx), batch_size=8, shuffle=True),
+        DataLoader(Subset(val_ds, val_idxs), batch_size=8, shuffle=False),
     )
     # print("train_1:", Counter(train_ds_1.targets[i] for i in train_idxs_1))
     # print("train_2:", Counter(train_ds_2.targets[i] for i in train_idxs_2))
@@ -84,20 +88,71 @@ for ds in [
             m,
             loss_fn=nn.CrossEntropyLoss(),
             config=TrainConfig(
-                epochs=80,
+                epochs=20,
                 accumulate_steps=1,
                 early_stop=True,
                 cp_name=cp_name,
                 lr=0.001
             ),
         )
-        history = trainer.fit(train_loader_11, test_loader)
-        history = trainer.fit(train_loader_12, test_loader)
-
+        # 预热
         history = trainer.fit(train_loader_21, test_loader)
+        trainer.save()
+
+
+        FedParam.unfreeze(trainer.model)
+        trainer.load()
+        # 冻结local 和 other
+        freeze_layer(trainer.model, include_names=["local"])
+        freeze_layer(trainer.model, include_names=["local", "gate"], exclude=True)
+        recorder = Recorder(name=cp_name, root="pretrain_exp")
+        history = trainer.fit(train_loader_11, test_loader)
+        time = sum([h["time"] for h in history])
+        recorder.update_cost(1, get_trainable_params(trainer.model), len(history), time=time)
+        history = trainer.fit(train_loader_12, test_loader)
+        time = sum([h["time"] for h in history])
+        recorder.update_cost(2, get_trainable_params(trainer.model), len(history), time=time)
+
+        FedParam.unfreeze(trainer.model)
+        trainer.load()
+        # 冻结 local
+        freeze_layer(trainer.model, include_names=["local"])
+        recorder = Recorder(name=cp_name, root="pretrain_exp")
+        history = trainer.fit(train_loader_11, test_loader)
+        time = sum([h["time"] for h in history])
+        recorder.update_cost(11, get_trainable_params(trainer.model), len(history), time=time)
+        history = trainer.fit(train_loader_12, test_loader)
+        time = sum([h["time"] for h in history])
+        recorder.update_cost(12, get_trainable_params(trainer.model), len(history), time=time)
+
+        FedParam.unfreeze(trainer.model)
+        trainer.load()
+        # 冻结 other
+        freeze_layer(trainer.model, include_names=["local", "gate"], exclude=True)
+        recorder = Recorder(name=cp_name, root="pretrain_exp")
+        history = trainer.fit(train_loader_11, test_loader)
+        time = sum([h["time"] for h in history])
+        recorder.update_cost(21, get_trainable_params(trainer.model), len(history), time=time)
+        history = trainer.fit(train_loader_12, test_loader)
+        time = sum([h["time"] for h in history])
+        recorder.update_cost(22, get_trainable_params(trainer.model), len(history), time=time)
+
+        FedParam.unfreeze(trainer.model)
+        trainer.load()
+        # 不冻结 other
+        recorder = Recorder(name=cp_name, root="pretrain_exp")
+        history = trainer.fit(train_loader_11, test_loader)
+        time = sum([h["time"] for h in history])
+        recorder.update_cost(31, get_trainable_params(trainer.model), len(history), time=time)
+        history = trainer.fit(train_loader_12, test_loader)
+        time = sum([h["time"] for h in history])
+        recorder.update_cost(32, get_trainable_params(trainer.model), len(history), time=time)
+
+        recorder.record(0)
+        # history = trainer.fit(train_loader_21, test_loader)
         # history = trainer.fit(train_loader_22, test_loader)
         # history = trainer.fit(train_loader, test_loader)
-        trainer.save()
+        # trainer.save()
 
         
 
